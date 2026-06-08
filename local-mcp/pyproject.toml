@@ -4,7 +4,7 @@ version = "0.1.0"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-  "beautifulsoup4>=4.14.3",
+  "beautifulsoup4>=4.15.0",
   "cyrtranslit>=1.2.0",
   "httpx>=0.28.1",
   "mcp[cli]>=1.27.2",
