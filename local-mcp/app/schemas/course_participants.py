@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ParticipantsData(BaseModel):
@@ -21,5 +21,4 @@ class ParticipantsData(BaseModel):
         description="Metadata about the matching process",
     )
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
