@@ -23,7 +23,7 @@ def _get_participants_data() -> list[CourseParticipantsRow]:
             if _YEAR_KEY_RE.match(key):
                 try:
                     entry[key] = int(value)
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     entry[key] = 0
 
         result.append(cast(CourseParticipantsRow, entry))
