@@ -3,8 +3,10 @@ from mcp.types import ToolAnnotations
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
+from app.schemas.committee import CommitteeRecommendation
 from app.schemas.course_participants import ParticipantsData
 from app.schemas.course_staff import StaffData
+from app.tools.committee import recommend_committee
 from app.tools.course_participants import (
     get_available_courses_for_participants,
     get_participants_for_course,
@@ -137,6 +139,27 @@ def make_app(settings: Settings) -> FastMCP:
             suggestions=suggestions,
             match_info=None,
         )
+
+    @mcp.tool(
+        name="recommend_thesis_committee",
+        description=(
+            "Recommend a thesis committee for a proposed thesis title. Give the title alone "
+            "to get a recommended mentor plus two members; include a known mentor to get just "
+            "the two members. Grounded in past FINKI defenses and professor publications."
+        ),
+        annotations=ToolAnnotations(
+            title="Recommend Thesis Committee",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    async def recommend_thesis_committee_tool(
+        title: str,
+        mentor: str | None = None,
+    ) -> CommitteeRecommendation:
+        return await recommend_committee(title, mentor)
 
     return mcp
 
