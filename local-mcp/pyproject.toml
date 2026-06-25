@@ -7,12 +7,12 @@ dependencies = [
   "beautifulsoup4>=4.15.0",
   "cyrtranslit>=1.2.0",
   "httpx>=0.28.1",
-  "mcp[cli]>=1.27.2",
+  "mcp[cli]>=1.28.0",
   "thefuzz>=0.22.1",
 ]
 
 [dependency-groups]
-dev = ["mypy>=2.1.0", "ruff>=0.15.17"]
+dev = ["mypy>=2.1.0", "ruff>=0.15.19"]
 
 [tool.mypy]
 python_version = "3.14"
