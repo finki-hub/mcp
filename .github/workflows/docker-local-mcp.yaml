@@ -15,4 +15,5 @@ jobs:
       dockerfile: ./local-mcp/Dockerfile
       context: ./local-mcp
       package-name: mcp-local
+      cache-backend: registry
     secrets: inherit

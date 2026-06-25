@@ -15,5 +15,6 @@ jobs:
       dockerfile: ./public-mcp/Dockerfile
       context: ./public-mcp
       package-name: mcp-public
+      cache-backend: registry
       submodules: true
     secrets: inherit
