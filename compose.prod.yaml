@@ -10,6 +10,7 @@ networks:
 services:
   local-mcp:
     environment:
+      CHAT_BOT_API_URL: ${CHAT_BOT_API_URL:-http://api:8880}
       DATA_STORAGE_URL: ${DATA_STORAGE_URL}
     image: ghcr.io/finki-hub/mcp-local:latest
     networks:
