@@ -14,5 +14,4 @@ class Settings(BaseSettings):
     PORT: int = 8808
 
     DATA_STORAGE_URL: str = "https://assets.finki-hub.com"
-    # chat-bot API, reachable by service name on the shared docker network.
     CHAT_BOT_API_URL: str = "http://api:8880"
