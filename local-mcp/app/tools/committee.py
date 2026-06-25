@@ -9,7 +9,9 @@ logger = logging.getLogger(__name__)
 
 _settings = Settings()
 _TIMEOUT = 60.0
-_ERROR_MESSAGE = "The thesis committee recommendation service is currently unavailable."
+_ERROR_MESSAGE = (
+    "Сервисот за препорака на комисии за дипломски работи моментално е недостапен."
+)
 
 
 async def recommend_committee(

@@ -40,5 +40,5 @@ def get_staff_for_course(course_name: str) -> CourseStaffRow:
         course=course_name,
         professors=[],
         assistants=[],
-        error="Course not found",
+        error="Предметот не е пронајден",
     )

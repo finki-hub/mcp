@@ -20,7 +20,7 @@ class StaffData(BaseModel):
     error: str | None = Field(
         None,
         description="Порака за грешка доколку предметот не е пронајден или има друг проблем",
-        examples=["Course 'структурно програмирање' not found"],
+        examples=["Предметот „структурно програмирање“ не е пронајден"],
     )
     suggestions: list[str] | None = Field(
         None,

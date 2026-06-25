@@ -42,5 +42,5 @@ def get_participants_for_course(course_name: str) -> CourseParticipantsRow:
 
     return CourseParticipantsRow(
         course=course_name,
-        error="Course not found",
+        error="Предметот не е пронајден",
     )

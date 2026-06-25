@@ -10,7 +10,7 @@ class ParticipantsData(BaseModel):
     error: str | None = Field(
         None,
         description="Порака за грешка доколку предметот не е пронајден",
-        examples=["Course not found"],
+        examples=["Предметот не е пронајден"],
     )
     suggestions: list[str] | None = Field(
         None,

@@ -21,6 +21,6 @@ class CommitteeRecommendation(BaseModel):
         None,
         description="Се пополнува кога сервисот за препорака е недостапен",
         examples=[
-            "The thesis committee recommendation service is currently unavailable.",
+            "Сервисот за препорака на комисии за дипломски работи моментално е недостапен.",
         ],
     )

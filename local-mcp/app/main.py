@@ -81,7 +81,7 @@ def make_app(settings: Settings) -> FastMCP:
             course=course_name,
             professors=[],
             assistants=[],
-            error=f"Course '{course_name}' not found",
+            error=f"Предметот „{course_name}“ не е пронајден",
             suggestions=suggestions,
             match_info=None,
         )
@@ -135,7 +135,7 @@ def make_app(settings: Settings) -> FastMCP:
 
         return ParticipantsData(
             course=course_name,
-            error=f"Course '{course_name}' not found",
+            error=f"Предметот „{course_name}“ не е пронајден",
             suggestions=suggestions,
             match_info=None,
         )
