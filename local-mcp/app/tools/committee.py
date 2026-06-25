@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 _settings = Settings()
 _TIMEOUT = 60.0
+_ERROR_MESSAGE = "The thesis committee recommendation service is currently unavailable."
 
 
 async def recommend_committee(
@@ -20,23 +21,45 @@ async def recommend_committee(
     if mentor:
         payload["mentor"] = mentor
 
+    mode = "members_only" if mentor else "full"
+
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
             response = await client.post(url, json=payload)
             response.raise_for_status()
             data = response.json()
-    except Exception as exc:
+    except httpx.HTTPError, ValueError:
         logger.exception("Committee recommendation request failed")
         return CommitteeRecommendation(
-            mode="members_only" if mentor else "full",
+            mode=mode,
             mentor=mentor,
             members=[],
-            error=f"Recommendation service error: {exc}",
+            error=_ERROR_MESSAGE,
         )
 
-    recommended_mentor = data.get("mentor") or {}
+    if not isinstance(data, dict):
+        logger.error("Unexpected recommendation payload type: %s", type(data).__name__)
+        return CommitteeRecommendation(
+            mode=mode,
+            mentor=mentor,
+            members=[],
+            error=_ERROR_MESSAGE,
+        )
+
+    mentor_obj = data.get("mentor")
+    recommended_mentor = (
+        mentor_obj.get("name") if isinstance(mentor_obj, dict) else None
+    )
+
+    members_raw = data.get("members")
+    members = (
+        [m["name"] for m in members_raw if isinstance(m, dict) and m.get("name")]
+        if isinstance(members_raw, list)
+        else []
+    )
+
     return CommitteeRecommendation(
-        mode=data.get("mode", ""),
-        mentor=recommended_mentor.get("name") or None,
-        members=[member["name"] for member in data.get("members", [])],
+        mode=str(data.get("mode") or mode),
+        mentor=mentor or recommended_mentor,
+        members=members,
     )
