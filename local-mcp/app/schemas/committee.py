@@ -4,23 +4,23 @@ from pydantic import BaseModel, Field
 class CommitteeRecommendation(BaseModel):
     mode: str = Field(
         ...,
-        description="'full' (mentor + members recommended) or 'members_only' (members only)",
+        description="'full' (препорачан ментор и двајца членови) или 'members_only' (само двајца членови)",
         examples=["full"],
     )
     mentor: str | None = Field(
         None,
-        description="Recommended mentor (FULL) or the given mentor (MEMBERS-ONLY)",
+        description="Препорачан ментор (кога mode е 'full') или дадениот ментор (кога mode е 'members_only')",
         examples=["Ѓорѓи Маџаров"],
     )
     members: list[str] = Field(
         default_factory=list,
-        description="The two recommended committee members",
+        description="Двајцата препорачани членови на комисијата",
         examples=[["Ивица Димитровски", "Дејан Ѓорѓевиќ"]],
     )
     error: str | None = Field(
         None,
-        description="Set when the recommendation service could not be reached",
+        description="Се пополнува кога сервисот за препорака е недостапен",
         examples=[
-            "The thesis committee recommendation service is currently unavailable.",
+            "Сервисот за препорака на комисии за дипломски работи моментално е недостапен.",
         ],
     )
