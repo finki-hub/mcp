@@ -4,12 +4,12 @@ from pydantic import BaseModel, Field
 class CommitteeRecommendation(BaseModel):
     mode: str = Field(
         ...,
-        description="'full' (препорачани ментор и членови) или 'members_only' (само членови)",
+        description="'full' (препорачан ментор и двајца членови) или 'members_only' (само двајца членови)",
         examples=["full"],
     )
     mentor: str | None = Field(
         None,
-        description="Препорачан ментор (FULL) или дадениот ментор (MEMBERS-ONLY)",
+        description="Препорачан ментор (кога mode е 'full') или дадениот ментор (кога mode е 'members_only')",
         examples=["Ѓорѓи Маџаров"],
     )
     members: list[str] = Field(
