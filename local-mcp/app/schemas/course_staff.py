@@ -4,32 +4,32 @@ from pydantic import BaseModel, Field
 class StaffData(BaseModel):
     course: str = Field(
         ...,
-        description="The name of the course",
+        description="Името на предметот",
         examples=["Структурно програмирање"],
     )
     professors: list[str] = Field(
         ...,
-        description="List of professors teaching the course",
+        description="Листа на професори кои го предаваат предметот",
         examples=[["Ѓорѓи Маџаров", "Ана Мадевска Богданова"]],
     )
     assistants: list[str] = Field(
         ...,
-        description="List of assistants for the course",
+        description="Листа на асистенти на предметот",
         examples=[["Александар Тенев", "Влатко Спасев"]],
     )
     error: str | None = Field(
         None,
-        description="Error message if the course is not found or other issues",
+        description="Порака за грешка доколку предметот не е пронајден или има друг проблем",
         examples=["Course 'структурно програмирање' not found"],
     )
     suggestions: list[str] | None = Field(
         None,
-        description="List of suggested course names if no exact match is found",
+        description="Листа на предложени имиња на предмети доколку нема точно совпаѓање",
         examples=[["Алгоритми и податочни структури", "Бази на податоци"]],
     )
     match_info: dict | None = Field(
         None,
-        description="Metadata about the matching process, including original query, matched course, similarity score, and match type",
+        description="Метаподатоци за процесот на совпаѓање: оригиналното барање, пронајдениот предмет, оценката на сличност и типот на совпаѓање",
         examples=[
             {
                 "original_query": "веб програмирање",

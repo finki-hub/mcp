@@ -35,9 +35,9 @@ def make_app(settings: Settings) -> FastMCP:
 
     @mcp.tool(
         name="get_available_courses_with_staff_data",
-        description="Get a list of available courses for staff.",
+        description="Враќа листа на достапни предмети за кои има податоци за наставниот кадар.",
         annotations=ToolAnnotations(
-            title="Get Available Courses for Staff",
+            title="Достапни предмети со податоци за кадар",
             destructiveHint=False,
             idempotentHint=True,
             openWorldHint=True,
@@ -51,9 +51,9 @@ def make_app(settings: Settings) -> FastMCP:
 
     @mcp.tool(
         name="get_staff_data_for_course",
-        description="Get staff data for a specific course.",
+        description="Враќа податоци за наставниот кадар (професори и асистенти) за определен предмет.",
         annotations=ToolAnnotations(
-            title="Get Staff Data for Course",
+            title="Податоци за кадар по предмет",
             destructiveHint=False,
             idempotentHint=True,
             openWorldHint=True,
@@ -88,9 +88,9 @@ def make_app(settings: Settings) -> FastMCP:
 
     @mcp.tool(
         name="get_available_courses_for_participants",
-        description="Get a list of available courses for participants.",
+        description="Враќа листа на достапни предмети за кои има податоци за бројот на запишани студенти.",
         annotations=ToolAnnotations(
-            title="Get Available Courses for Participants",
+            title="Достапни предмети со податоци за запишани",
             destructiveHint=False,
             idempotentHint=True,
             openWorldHint=True,
@@ -104,9 +104,9 @@ def make_app(settings: Settings) -> FastMCP:
 
     @mcp.tool(
         name="get_participants_for_course",
-        description="Get participant counts for a specific course, with robust matching.",
+        description="Враќа број на запишани студенти за определен предмет, со толерантно совпаѓање на името.",
         annotations=ToolAnnotations(
-            title="Get Participants for Course",
+            title="Број на запишани по предмет",
             destructiveHint=False,
             idempotentHint=True,
             openWorldHint=True,
@@ -143,12 +143,13 @@ def make_app(settings: Settings) -> FastMCP:
     @mcp.tool(
         name="recommend_thesis_committee",
         description=(
-            "Recommend a thesis committee for a proposed thesis title. Give the title alone "
-            "to get a recommended mentor plus two members; include a known mentor to get just "
-            "the two members. Grounded in past FINKI defenses and professor publications."
+            "Препорачува комисија за дипломска работа според предложениот наслов. Доколку е "
+            "даден само насловот, враќа препорачан ментор и двајца членови; доколку е наведен "
+            "и менторот, враќа само двајцата членови. Се заснова на претходните одбрани на "
+            "ФИНКИ и на трудовите на професорите."
         ),
         annotations=ToolAnnotations(
-            title="Recommend Thesis Committee",
+            title="Препорака на комисија за дипломска",
             destructiveHint=False,
             idempotentHint=True,
             openWorldHint=True,
