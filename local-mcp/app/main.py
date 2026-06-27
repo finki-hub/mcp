@@ -1,3 +1,6 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 from starlette.requests import Request
@@ -15,6 +18,11 @@ from app.tools.course_staff import (
     get_available_courses_for_staff,
     get_staff_for_course,
 )
+from app.utils.analytics import (
+    init_analytics,
+    shutdown_analytics,
+    track_tool,
+)
 from app.utils.query_matcher import (
     match_query_to_candidates,
 )
@@ -24,9 +32,18 @@ settings = Settings()
 
 
 def make_app(settings: Settings) -> FastMCP:
+    @asynccontextmanager
+    async def lifespan(_server: FastMCP) -> AsyncIterator[None]:
+        init_analytics(settings)
+        try:
+            yield
+        finally:
+            shutdown_analytics()
+
     mcp = FastMCP(
         port=settings.PORT,
         host=settings.HOST,
+        lifespan=lifespan,
     )
 
     @mcp.custom_route("/health", methods=["GET", "HEAD"])
@@ -44,6 +61,7 @@ def make_app(settings: Settings) -> FastMCP:
             readOnlyHint=True,
         ),
     )
+    @track_tool("get_available_courses_with_staff_data")
     async def get_available_courses_with_staff_data_tool() -> list[str]:
         result = get_available_courses_for_staff()
 
@@ -60,6 +78,7 @@ def make_app(settings: Settings) -> FastMCP:
             readOnlyHint=True,
         ),
     )
+    @track_tool("get_staff_data_for_course")
     async def get_staff_data_for_course_tool(course_name: str) -> StaffData:
         course_names = get_available_courses_for_staff()
         result = match_query_to_candidates(course_name, course_names)
@@ -97,6 +116,7 @@ def make_app(settings: Settings) -> FastMCP:
             readOnlyHint=True,
         ),
     )
+    @track_tool("get_available_courses_for_participants")
     async def get_available_courses_for_participants_tool() -> list[str]:
         result = get_available_courses_for_participants()
 
@@ -113,6 +133,7 @@ def make_app(settings: Settings) -> FastMCP:
             readOnlyHint=True,
         ),
     )
+    @track_tool("get_participants_for_course")
     async def get_participants_for_course_tool(course_name: str) -> ParticipantsData:
         course_names = get_available_courses_for_participants()
         result = match_query_to_candidates(course_name, course_names)
@@ -156,6 +177,7 @@ def make_app(settings: Settings) -> FastMCP:
             readOnlyHint=True,
         ),
     )
+    @track_tool("recommend_thesis_committee")
     async def recommend_thesis_committee_tool(
         title: str,
         mentor: str | None = None,

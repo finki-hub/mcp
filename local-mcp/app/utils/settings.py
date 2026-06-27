@@ -15,3 +15,6 @@ class Settings(BaseSettings):
 
     DATA_STORAGE_URL: str = "https://assets.finki-hub.com"
     CHAT_BOT_API_URL: str = "http://api:8880"
+
+    POSTHOG_KEY: str = ""
+    POSTHOG_HOST: str = "https://eu.i.posthog.com"

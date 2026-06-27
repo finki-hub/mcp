@@ -14,6 +14,8 @@ services:
     environment:
       CHAT_BOT_API_URL: ${CHAT_BOT_API_URL:-http://api:8880}
       DATA_STORAGE_URL: ${DATA_STORAGE_URL}
+      POSTHOG_KEY: ${POSTHOG_KEY:-phc_xXEqLMnYeDPuXA6HHwuasQMdSufDGryS8vZZuHmu9Qwd}
+      POSTHOG_HOST: ${POSTHOG_HOST:-https://eu.i.posthog.com}
     image: finki-hub/mcp-local:latest
     networks:
       - finki_stack_dev
