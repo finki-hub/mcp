@@ -62,7 +62,6 @@ def capture_tool_called(
     if _state.client is None:
         return
 
-    # Build a fresh metadata-only dict; never include raw tool arguments.
     event_properties: dict[str, object] = {
         "service": _SERVICE,
         "tool": tool,
