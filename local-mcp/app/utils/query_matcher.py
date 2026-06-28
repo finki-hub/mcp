@@ -1,15 +1,15 @@
 from typing import TypedDict
 
 import cyrtranslit  # type: ignore[import-untyped]
-from thefuzz import fuzz, process  # type: ignore[import-untyped]
+from thefuzz import fuzz  # type: ignore[import-untyped]
 
 
-class MatchResult(TypedDict):
+class QueryResolution(TypedDict):
+    status: str
     match: str | None
-    score: int | float
-    exact: bool
-    suggestions: list[str]
+    score: int
     match_type: str
+    candidates: list[str]
 
 
 def transliterate_and_normalize(text: str) -> str:
@@ -19,58 +19,82 @@ def transliterate_and_normalize(text: str) -> str:
         return text.casefold().strip()
 
 
-def match_query_to_candidates(
+def match_query_to_group(
     query: str,
     candidates: list[str],
     fuzzy_threshold: int = 80,
-    suggestion_threshold: int = 50,
-    max_suggestions: int = 3,
-) -> MatchResult:
+) -> list[str] | None:
+    if not candidates:
+        return None
+
     norm_query = transliterate_and_normalize(query)
-    norm_candidates = [transliterate_and_normalize(c) for c in candidates]
-    for i, norm_cand in enumerate(norm_candidates):
-        if norm_cand == norm_query:
+    scored = [
+        (fuzz.WRatio(norm_query, transliterate_and_normalize(candidate)), candidate)
+        for candidate in candidates
+    ]
+    top_score = max(score for score, _ in scored)
+    if top_score < fuzzy_threshold:
+        return None
+
+    return [candidate for score, candidate in scored if score == top_score]
+
+
+def resolve_query(
+    query: str,
+    candidates: list[str],
+    fuzzy_threshold: int = 80,
+    ambiguity_margin: int = 5,
+    suggestion_floor: int = 50,
+) -> QueryResolution:
+    pairs = [(c, transliterate_and_normalize(c)) for c in candidates]
+    norm_query = transliterate_and_normalize(query)
+
+    for candidate, norm_candidate in pairs:
+        if norm_candidate == norm_query:
             return {
-                "match": candidates[i],
+                "status": "matched",
+                "match": candidate,
                 "score": 100,
-                "exact": True,
-                "suggestions": [],
                 "match_type": "exact",
+                "candidates": [],
             }
-    best = process.extractOne(norm_query, norm_candidates, scorer=fuzz.WRatio)
-    if best is None:
+
+    scored = sorted(
+        ((fuzz.WRatio(norm_query, nc), c) for c, nc in pairs),
+        key=lambda pair: (-pair[0], pair[1]),
+    )
+    if not scored:
         return {
+            "status": "not_found",
             "match": None,
             "score": 0,
-            "exact": False,
-            "suggestions": [],
             "match_type": "none",
+            "candidates": [],
         }
-    _, best_score, best_index = best[0], best[1], norm_candidates.index(best[0])
-    if best_score >= fuzzy_threshold:
+
+    top_score = scored[0][0]
+    if top_score < fuzzy_threshold:
         return {
-            "match": candidates[best_index],
-            "score": best_score,
-            "exact": False,
-            "suggestions": [],
-            "match_type": "fuzzy",
+            "status": "not_found",
+            "match": None,
+            "score": top_score,
+            "match_type": "none",
+            "candidates": [name for score, name in scored if score >= suggestion_floor],
         }
-    all_matches = process.extract(
-        norm_query,
-        norm_candidates,
-        scorer=fuzz.WRatio,
-    )
-    suggestions = []
-    for match_text, score in all_matches:
-        idx = norm_candidates.index(match_text)
-        if score >= suggestion_threshold and idx != best_index:
-            suggestions.append(candidates[idx])
-        if len(suggestions) >= max_suggestions:
-            break
+
+    cluster = [name for score, name in scored if score >= top_score - ambiguity_margin]
+    if len(cluster) == 1:
+        return {
+            "status": "matched",
+            "match": cluster[0],
+            "score": top_score,
+            "match_type": "fuzzy",
+            "candidates": [],
+        }
     return {
-        "match": candidates[best_index],
-        "score": best_score,
-        "exact": False,
-        "suggestions": suggestions,
-        "match_type": "fallback",
+        "status": "ambiguous",
+        "match": None,
+        "score": top_score,
+        "match_type": "ambiguous",
+        "candidates": cluster,
     }
