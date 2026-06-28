@@ -89,8 +89,8 @@ def capture_exception(
         event_properties.update(properties)
 
     try:
-        _state.client.capture_exception(
-            exc,
+        _state.client.capture(
+            "tool_error",
             distinct_id=_DISTINCT_ID,
             properties=event_properties,
         )
