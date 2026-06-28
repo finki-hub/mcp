@@ -1,22 +1,28 @@
+from typing import Annotated
+
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
+from pydantic import Field
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
 from app.schemas.committee import CommitteeRecommendation
-from app.schemas.course_participants import ParticipantsData
-from app.schemas.course_staff import StaffData
+from app.schemas.course import (
+    AccreditationYear,
+    Course,
+    CourseMatch,
+    CourseParticipants,
+    CourseStaff,
+    CourseStatus,
+    CourseTag,
+    StudyProgram,
+)
 from app.tools.committee import recommend_committee
-from app.tools.course_participants import (
-    get_available_courses_for_participants,
-    get_participants_for_course,
-)
-from app.tools.course_staff import (
-    get_available_courses_for_staff,
-    get_staff_for_course,
-)
-from app.utils.query_matcher import (
-    match_query_to_candidates,
+from app.tools.course import (
+    get_course_data,
+    get_course_participants,
+    get_course_staff,
+    list_courses,
 )
 from app.utils.settings import Settings
 
@@ -34,111 +40,160 @@ def make_app(settings: Settings) -> FastMCP:
         return PlainTextResponse("OK")
 
     @mcp.tool(
-        name="get_available_courses_with_staff_data",
-        description="Враќа листа на достапни предмети за кои има податоци за наставниот кадар.",
+        name="list_courses",
+        description=(
+            "Враќа листа на предмети што ги задоволуваат зададените филтри "
+            "(комбинирани со И). Сите филтри се опционални. Програма, статус и "
+            "семестар се проверуваат заедно во рамки на една акредитација; предметот "
+            "се вклучува ако барем една акредитација ги исполнува."
+        ),
         annotations=ToolAnnotations(
-            title="Достапни предмети со податоци за кадар",
+            title="Листа на предмети по филтри",
             destructiveHint=False,
             idempotentHint=True,
             openWorldHint=True,
             readOnlyHint=True,
         ),
     )
-    async def get_available_courses_with_staff_data_tool() -> list[str]:
-        result = get_available_courses_for_staff()
-
-        return result
-
-    @mcp.tool(
-        name="get_staff_data_for_course",
-        description="Враќа податоци за наставниот кадар (професори и асистенти) за определен предмет.",
-        annotations=ToolAnnotations(
-            title="Податоци за кадар по предмет",
-            destructiveHint=False,
-            idempotentHint=True,
-            openWorldHint=True,
-            readOnlyHint=True,
-        ),
-    )
-    async def get_staff_data_for_course_tool(course_name: str) -> StaffData:
-        course_names = get_available_courses_for_staff()
-        result = match_query_to_candidates(course_name, course_names)
-        if result["match"]:
-            staff_data = get_staff_for_course(result["match"])
-            staff_data["match_info"] = {
-                "original_query": course_name,
-                "matched_course": result["match"],
-                "similarity_score": result["score"],
-                "match_type": result["match_type"],
-            }
-            return StaffData(**staff_data)
-
-        suggestions = result.get("suggestions")
-        if not isinstance(suggestions, list):
-            suggestions = None
-
-        return StaffData(
-            course=course_name,
-            professors=[],
-            assistants=[],
-            error=f"Предметот „{course_name}“ не е пронајден",
-            suggestions=suggestions,
-            match_info=None,
+    async def list_courses_tool(
+        program: Annotated[
+            StudyProgram | None,
+            Field(
+                description="Студиска програма; само предмети што се нудат во неа.",
+                examples=["КН"],
+            ),
+        ] = None,
+        status: Annotated[
+            CourseStatus | None,
+            Field(
+                description=(
+                    "Статус на предметот: „задолжителен“ или „изборен“. Ако е зададена "
+                    "и студиска програма, важи само за таа програма; инаку важи за која било "
+                    "програма."
+                ),
+            ),
+        ] = None,
+        semester: Annotated[
+            int | None,
+            Field(description="Семестар (1–8).", ge=1, le=8),
+        ] = None,
+        accreditation: Annotated[
+            AccreditationYear | None,
+            Field(
+                description="Ограничи на конкретна акредитација.",
+                examples=["2018", "2023"],
+            ),
+        ] = None,
+        tags: Annotated[
+            list[CourseTag] | None,
+            Field(
+                description="Ознаки (тагови); предметот мора да ги содржи сите наведени.",
+                examples=[["ai"]],
+            ),
+        ] = None,
+        professors: Annotated[
+            list[str] | None,
+            Field(
+                description="Имиња на професори; предметот мора да ги содржи сите наведени (толерантно/fuzzy совпаѓање).",
+                examples=[["Димитар Трајанов"]],
+            ),
+        ] = None,
+        assistants: Annotated[
+            list[str] | None,
+            Field(
+                description="Имиња на асистенти; предметот мора да ги содржи сите наведени (толерантно/fuzzy совпаѓање).",
+                examples=[["Ана Тодоровска"]],
+            ),
+        ] = None,
+    ) -> list[CourseMatch]:
+        return list_courses(
+            program=program,
+            status=status,
+            semester=semester,
+            accreditation=accreditation,
+            tags=tags,
+            professors=professors,
+            assistants=assistants,
         )
 
     @mcp.tool(
-        name="get_available_courses_for_participants",
-        description="Враќа листа на достапни предмети за кои има податоци за бројот на запишани студенти.",
+        name="get_course_data",
+        description=(
+            "Враќа општи податоци за предмет: ознаки, Discord канал и податоци по "
+            "акредитација (код, ниво, семестар, кредити, предуслов, статус по студиска "
+            "програма)."
+        ),
         annotations=ToolAnnotations(
-            title="Достапни предмети со податоци за запишани",
+            title="Општи податоци за предмет",
             destructiveHint=False,
             idempotentHint=True,
             openWorldHint=True,
             readOnlyHint=True,
         ),
     )
-    async def get_available_courses_for_participants_tool() -> list[str]:
-        result = get_available_courses_for_participants()
-
-        return result
+    async def get_course_data_tool(
+        course_name: Annotated[
+            str,
+            Field(
+                description=(
+                    "Име на предметот. Совпаѓањето на името е толерантно (fuzzy) и "
+                    "поддржува латиница; ако нема точно совпаѓање, враќа предлози."
+                ),
+                examples=["Веб програмирање", "veb programiranje"],
+            ),
+        ],
+    ) -> Course:
+        return get_course_data(course_name)
 
     @mcp.tool(
-        name="get_participants_for_course",
-        description="Враќа број на запишани студенти за определен предмет, со толерантно совпаѓање на името.",
+        name="get_course_staff",
+        description="Враќа наставен кадар (професори и асистенти) за предмет.",
         annotations=ToolAnnotations(
-            title="Број на запишани по предмет",
+            title="Наставен кадар за предмет",
             destructiveHint=False,
             idempotentHint=True,
             openWorldHint=True,
             readOnlyHint=True,
         ),
     )
-    async def get_participants_for_course_tool(course_name: str) -> ParticipantsData:
-        course_names = get_available_courses_for_participants()
-        result = match_query_to_candidates(course_name, course_names)
-        suggestions = (
-            result["suggestions"] if isinstance(result["suggestions"], list) else []
-        )
+    async def get_course_staff_tool(
+        course_name: Annotated[
+            str,
+            Field(
+                description=(
+                    "Име на предметот. Совпаѓањето на името е толерантно (fuzzy) и "
+                    "поддржува латиница; ако нема точно совпаѓање, враќа предлози."
+                ),
+                examples=["Веб програмирање", "veb programiranje"],
+            ),
+        ],
+    ) -> CourseStaff:
+        return get_course_staff(course_name)
 
-        if result["match"]:
-            participants_data = get_participants_for_course(result["match"])
-            participants_data["match_info"] = {
-                "original_query": course_name,
-                "matched_course": result["match"],
-                "similarity_score": result["score"],
-                "match_type": result["match_type"],
-            }
-            participants_data.setdefault("error", None)
-            participants_data.setdefault("suggestions", suggestions)
-
-            return ParticipantsData(**participants_data)
-
-        return ParticipantsData(
-            course=course_name,
-            error=f"Предметот „{course_name}“ не е пронајден",
-            suggestions=suggestions,
-            match_info=None,
-        )
+    @mcp.tool(
+        name="get_course_participants",
+        description="Враќа број на запишани студенти по академска година за предмет.",
+        annotations=ToolAnnotations(
+            title="Запишани студенти по предмет",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    async def get_course_participants_tool(
+        course_name: Annotated[
+            str,
+            Field(
+                description=(
+                    "Име на предметот. Совпаѓањето на името е толерантно (fuzzy) и "
+                    "поддржува латиница; ако нема точно совпаѓање, враќа предлози."
+                ),
+                examples=["Веб програмирање", "veb programiranje"],
+            ),
+        ],
+    ) -> CourseParticipants:
+        return get_course_participants(course_name)
 
     @mcp.tool(
         name="recommend_thesis_committee",
