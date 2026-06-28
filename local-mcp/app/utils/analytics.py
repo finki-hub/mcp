@@ -27,19 +27,28 @@ _state = _AnalyticsState()
 def init_analytics(settings: Settings) -> None:
     if not settings.POSTHOG_KEY:
         logger.info("PostHog disabled (no POSTHOG_KEY); analytics is a no-op")
+        _state.client = None
         return
 
-    _state.client = Posthog(
-        project_api_key=settings.POSTHOG_KEY,
-        host=settings.POSTHOG_HOST,
-        enable_exception_autocapture=False,
-    )
+    try:
+        _state.client = Posthog(
+            project_api_key=settings.POSTHOG_KEY,
+            host=settings.POSTHOG_HOST,
+            enable_exception_autocapture=False,
+        )
+    except Exception:
+        logger.exception("Failed to initialise PostHog client; analytics is a no-op")
+        _state.client = None
 
 
 def shutdown_analytics() -> None:
-    if _state.client is not None:
-        _state.client.flush()
-        _state.client.shutdown()
+    try:
+        if _state.client is not None:
+            _state.client.flush()
+            _state.client.shutdown()
+    except Exception:
+        logger.exception("Failed to shut down PostHog client")
+    finally:
         _state.client = None
 
 
