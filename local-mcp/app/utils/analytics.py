@@ -1,6 +1,7 @@
 import functools
 import logging
 import time
+import traceback
 from collections.abc import Awaitable, Callable
 from typing import ParamSpec, TypeVar
 
@@ -114,6 +115,10 @@ def capture_exception(
     event_properties: dict[str, object] = {
         "service": _SERVICE,
         "error_type": type(exc).__name__,
+        "message": str(exc),
+        "traceback": "".join(
+            traceback.format_exception(type(exc), exc, exc.__traceback__),
+        ),
     }
     if properties:
         event_properties.update(properties)
