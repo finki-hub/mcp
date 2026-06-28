@@ -17,6 +17,12 @@ from app.schemas.course import (
     CourseTag,
     StudyProgram,
 )
+from app.schemas.staff import (
+    StaffMatch,
+    StaffMember,
+    StaffPosition,
+    StaffTitle,
+)
 from app.tools.committee import recommend_committee
 from app.tools.course import (
     get_course_data,
@@ -24,6 +30,7 @@ from app.tools.course import (
     get_course_staff,
     list_courses,
 )
+from app.tools.staff import get_staff_member, list_staff
 from app.utils.settings import Settings
 
 settings = Settings()
@@ -194,6 +201,74 @@ def make_app(settings: Settings) -> FastMCP:
         ],
     ) -> CourseParticipants:
         return get_course_participants(course_name)
+
+    @mcp.tool(
+        name="list_staff",
+        description=(
+            "Враќа листа на вработени (наставен и ненаставен кадар) што ги "
+            "задоволуваат зададените филтри (комбинирани со И). Сите филтри се "
+            "опционални."
+        ),
+        annotations=ToolAnnotations(
+            title="Листа на вработени по филтри",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    async def list_staff_tool(
+        active: Annotated[
+            bool | None,
+            Field(
+                description="Дали вработениот е активен или не (пензиониран).",
+                examples=[True],
+            ),
+        ] = None,
+        title: Annotated[
+            StaffTitle | None,
+            Field(
+                description="Титула на вработениот.",
+                examples=["д-р"],
+            ),
+        ] = None,
+        position: Annotated[
+            StaffPosition | None,
+            Field(
+                description="Позиција на вработениот.",
+                examples=["Редовен професор"],
+            ),
+        ] = None,
+    ) -> list[StaffMatch]:
+        return list_staff(active=active, title=title, position=position)
+
+    @mcp.tool(
+        name="get_staff_member",
+        description=(
+            "Враќа сите податоци за вработен: титула, звање, активност, е-пошта, "
+            "кабинет и линкови до ФИНКИ профилот, Courses профилот и консултации."
+        ),
+        annotations=ToolAnnotations(
+            title="Податоци за вработен",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    async def get_staff_member_tool(
+        name: Annotated[
+            str,
+            Field(
+                description=(
+                    "Име на вработениот. Совпаѓањето на името е толерантно (fuzzy) и "
+                    "поддржува латиница; ако нема точно совпаѓање, враќа предлози."
+                ),
+                examples=["Александар Стојменски", "aleksandar stojmenski"],
+            ),
+        ],
+    ) -> StaffMember:
+        return get_staff_member(name)
 
     @mcp.tool(
         name="recommend_thesis_committee",
