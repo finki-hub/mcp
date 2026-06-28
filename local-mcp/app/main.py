@@ -19,6 +19,7 @@ from app.schemas.course import (
     CourseTag,
     StudyProgram,
 )
+from app.schemas.session import ExamSessionScheduleFiles
 from app.schemas.staff import (
     StaffMatch,
     StaffMember,
@@ -32,6 +33,7 @@ from app.tools.course import (
     get_course_staff,
     list_courses,
 )
+from app.tools.session import list_exam_session_schedules
 from app.tools.staff import get_staff_member, list_staff
 from app.utils.analytics import (
     capture_lifecycle_event,
@@ -65,6 +67,25 @@ def make_app(settings: Settings) -> FastMCP:
     @mcp.custom_route("/health", methods=["GET", "HEAD"])
     async def health_check(request: Request) -> PlainTextResponse:
         return PlainTextResponse("OK")
+
+    @mcp.tool(
+        name="list_exam_session_schedules",
+        description=(
+            "Враќа достапни датотеки со распореди за испитни сесии и колоквиумски недели. "
+            "Секоја ставка содржи ознака на сесијата и име на датотека. За целосен линк за "
+            "преземање, додади го `filename` на крајот од `base_url`."
+        ),
+        annotations=ToolAnnotations(
+            title="Датотеки со распореди за испитни сесии",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("list_exam_session_schedules")
+    async def list_exam_session_schedules_tool() -> ExamSessionScheduleFiles:
+        return list_exam_session_schedules()
 
     @mcp.tool(
         name="list_courses",
