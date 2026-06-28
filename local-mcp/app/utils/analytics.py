@@ -73,6 +73,31 @@ def capture_tool_called(
         logger.exception("Failed to capture PostHog event")
 
 
+def capture_exception(
+    exc: BaseException,
+    *,
+    properties: dict[str, object] | None = None,
+) -> None:
+    if _state.client is None:
+        return
+
+    event_properties: dict[str, object] = {
+        "service": _SERVICE,
+        "error_type": type(exc).__name__,
+    }
+    if properties:
+        event_properties.update(properties)
+
+    try:
+        _state.client.capture_exception(
+            exc,
+            distinct_id=_DISTINCT_ID,
+            properties=event_properties,
+        )
+    except Exception:
+        logger.exception("Failed to capture PostHog exception")
+
+
 def _arg_metadata(
     args: tuple[object, ...],
     kwargs: dict[str, object],
@@ -96,8 +121,9 @@ def track_tool(
             success = True
             try:
                 return await func(*args, **kwargs)
-            except Exception:
+            except Exception as exc:
                 success = False
+                capture_exception(exc, properties={"tool": tool})
                 raise
             finally:
                 duration_ms = (time.perf_counter() - start) * 1000
