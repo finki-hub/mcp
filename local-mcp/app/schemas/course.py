@@ -12,7 +12,7 @@ class StudyProgram(StrEnum):
     IMB = "ИМБ"
     KI = "КИ"
     KE = "КЕ"
-    SEIS = "СЕИС"
+    SEIS = "SEIS"
     IE = "ИЕ"
     SSP = "ССП"
 
