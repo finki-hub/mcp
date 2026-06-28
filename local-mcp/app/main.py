@@ -1,3 +1,5 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Annotated
 
 from mcp.server.fastmcp import FastMCP
@@ -31,15 +33,33 @@ from app.tools.course import (
     list_courses,
 )
 from app.tools.staff import get_staff_member, list_staff
+from app.utils.analytics import (
+    capture_lifecycle_event,
+    init_analytics,
+    shutdown_analytics,
+    track_tool,
+)
 from app.utils.settings import Settings
 
 settings = Settings()
 
 
 def make_app(settings: Settings) -> FastMCP:
+    @asynccontextmanager
+    async def lifespan(_server: FastMCP) -> AsyncIterator[None]:
+        init_analytics(settings)
+        tools = await _server.list_tools()
+        capture_lifecycle_event("server_started", properties={"tool_count": len(tools)})
+        try:
+            yield
+        finally:
+            capture_lifecycle_event("server_stopped")
+            shutdown_analytics()
+
     mcp = FastMCP(
         port=settings.PORT,
         host=settings.HOST,
+        lifespan=lifespan,
     )
 
     @mcp.custom_route("/health", methods=["GET", "HEAD"])
@@ -62,6 +82,7 @@ def make_app(settings: Settings) -> FastMCP:
             readOnlyHint=True,
         ),
     )
+    @track_tool("list_courses")
     async def list_courses_tool(
         program: Annotated[
             StudyProgram | None,
@@ -138,6 +159,7 @@ def make_app(settings: Settings) -> FastMCP:
             readOnlyHint=True,
         ),
     )
+    @track_tool("get_course_data")
     async def get_course_data_tool(
         course_name: Annotated[
             str,
@@ -163,6 +185,7 @@ def make_app(settings: Settings) -> FastMCP:
             readOnlyHint=True,
         ),
     )
+    @track_tool("get_course_staff")
     async def get_course_staff_tool(
         course_name: Annotated[
             str,
@@ -188,6 +211,7 @@ def make_app(settings: Settings) -> FastMCP:
             readOnlyHint=True,
         ),
     )
+    @track_tool("get_course_participants")
     async def get_course_participants_tool(
         course_name: Annotated[
             str,
@@ -217,6 +241,7 @@ def make_app(settings: Settings) -> FastMCP:
             readOnlyHint=True,
         ),
     )
+    @track_tool("list_staff")
     async def list_staff_tool(
         active: Annotated[
             bool | None,
@@ -256,6 +281,7 @@ def make_app(settings: Settings) -> FastMCP:
             readOnlyHint=True,
         ),
     )
+    @track_tool("get_staff_member")
     async def get_staff_member_tool(
         name: Annotated[
             str,
@@ -286,6 +312,7 @@ def make_app(settings: Settings) -> FastMCP:
             readOnlyHint=True,
         ),
     )
+    @track_tool("recommend_thesis_committee")
     async def recommend_thesis_committee_tool(
         title: str,
         mentor: str | None = None,
