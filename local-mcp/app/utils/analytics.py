@@ -52,6 +52,28 @@ def shutdown_analytics() -> None:
         _state.client = None
 
 
+def capture_lifecycle_event(
+    event: str,
+    *,
+    properties: dict[str, object] | None = None,
+) -> None:
+    if _state.client is None:
+        return
+
+    event_properties: dict[str, object] = {"service": _SERVICE}
+    if properties:
+        event_properties.update(properties)
+
+    try:
+        _state.client.capture(
+            event,
+            distinct_id=_DISTINCT_ID,
+            properties=event_properties,
+        )
+    except Exception:
+        logger.exception("Failed to capture PostHog lifecycle event")
+
+
 def capture_tool_called(
     tool: str,
     duration_ms: float,

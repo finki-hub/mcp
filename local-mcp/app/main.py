@@ -27,6 +27,7 @@ from app.tools.course import (
     list_courses,
 )
 from app.utils.analytics import (
+    capture_lifecycle_event,
     init_analytics,
     shutdown_analytics,
     track_tool,
@@ -40,9 +41,12 @@ def make_app(settings: Settings) -> FastMCP:
     @asynccontextmanager
     async def lifespan(_server: FastMCP) -> AsyncIterator[None]:
         init_analytics(settings)
+        tools = await _server.list_tools()
+        capture_lifecycle_event("server_started", properties={"tool_count": len(tools)})
         try:
             yield
         finally:
+            capture_lifecycle_event("server_stopped")
             shutdown_analytics()
 
     mcp = FastMCP(
