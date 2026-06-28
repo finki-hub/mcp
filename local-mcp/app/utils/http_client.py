@@ -12,7 +12,7 @@ _CACHE_TTL = 3600  # 1 hour in seconds
 _settings = Settings()
 
 
-class _JsonCache:
+class _JsonCache[JsonDocument]:
     """
     Time-bounded in-memory cache for a single upstream JSON document. On a
     failed refresh, the stale cache is returned when available.
@@ -20,10 +20,10 @@ class _JsonCache:
 
     def __init__(self, filename: str) -> None:
         self._filename = filename
-        self._data: list[dict] | None = None
+        self._data: JsonDocument | None = None
         self._timestamp = 0.0
 
-    def get(self) -> list[dict]:
+    def get(self) -> JsonDocument:
         now = time.monotonic()
         if self._data is not None and (now - self._timestamp) < _CACHE_TTL:
             return self._data
@@ -40,11 +40,12 @@ class _JsonCache:
             if self._data is None:
                 raise
 
-        return self._data  # type: ignore[return-value]
+        return self._data
 
 
-_courses_cache = _JsonCache("courses.json")
-_staff_cache = _JsonCache("staff.json")
+_courses_cache = _JsonCache[list[dict]]("courses.json")
+_staff_cache = _JsonCache[list[dict]]("staff.json")
+_sessions_cache = _JsonCache[dict[str, str]]("sessions.json")
 
 
 def get_courses() -> list[dict]:
@@ -61,3 +62,11 @@ def get_staff() -> list[dict]:
     one hour old.
     """
     return _staff_cache.get()
+
+
+def get_exam_sessions() -> dict[str, str]:
+    """
+    Fetch exam session schedule filenames from R2 storage, returning a cached
+    copy if it is less than one hour old.
+    """
+    return _sessions_cache.get()
