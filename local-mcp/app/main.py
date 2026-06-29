@@ -27,6 +27,13 @@ from app.schemas.staff import (
     StaffPosition,
     StaffTitle,
 )
+from app.schemas.timetable import (
+    TimetableDay,
+    TimetableEntity,
+    TimetableEntry,
+    TimetableLessonType,
+    TimetableSummary,
+)
 from app.tools.committee import recommend_committee
 from app.tools.course import (
     get_course_data,
@@ -37,6 +44,14 @@ from app.tools.course import (
 from app.tools.room import get_room_data, list_rooms
 from app.tools.session import list_exam_session_schedules
 from app.tools.staff import get_staff_member, list_staff
+from app.tools.timetable import (
+    list_timetable_courses,
+    list_timetable_entries,
+    list_timetable_groups,
+    list_timetable_professors,
+    list_timetable_rooms,
+    list_timetables,
+)
 from app.utils.analytics import (
     capture_lifecycle_event,
     init_analytics,
@@ -88,6 +103,238 @@ def make_app(settings: Settings) -> FastMCP:
     @track_tool("list_exam_session_schedules")
     async def list_exam_session_schedules_tool() -> ExamSessionScheduleFiles:
         return list_exam_session_schedules()
+
+    @mcp.tool(
+        name="list_timetables",
+        description=(
+            "Враќа листа на достапни распореди. Секоја ставка содржи ID, наслов, "
+            "почетен датум и академска година."
+        ),
+        annotations=ToolAnnotations(
+            title="Листа на распореди",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("list_timetables")
+    async def list_timetables_tool() -> list[TimetableSummary]:
+        return list_timetables()
+
+    @mcp.tool(
+        name="list_timetable_groups",
+        description=(
+            "Враќа групи во распоред (означува година на студии и студиска програма). Секоја ставка содржи ID и име; ID може да се "
+            "користи како `group_id` во `list_timetable_entries`."
+        ),
+        annotations=ToolAnnotations(
+            title="Групи во распоред",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("list_timetable_groups")
+    async def list_timetable_groups_tool(
+        id: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "ID на распоредот добиен од `list_timetables`. Ако не е зададено, "
+                    "се користи моментално активниот распоред."
+                ),
+                examples=["28"],
+            ),
+        ] = None,
+    ) -> list[TimetableEntity]:
+        return list_timetable_groups(id)
+
+    @mcp.tool(
+        name="list_timetable_professors",
+        description=(
+            "Враќа професори во распоред. Секоја ставка содржи ID и име; ID може да се "
+            "користи како `professor_id` во `list_timetable_entries`."
+        ),
+        annotations=ToolAnnotations(
+            title="Професори во распоред",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("list_timetable_professors")
+    async def list_timetable_professors_tool(
+        id: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "ID на распоредот добиен од `list_timetables`. Ако не е зададено, "
+                    "се користи моментално активниот распоред."
+                ),
+                examples=["28"],
+            ),
+        ] = None,
+    ) -> list[TimetableEntity]:
+        return list_timetable_professors(id)
+
+    @mcp.tool(
+        name="list_timetable_rooms",
+        description=(
+            "Враќа простории во распоред. Секоја ставка содржи ID и име; ID може да се "
+            "користи како `room_id` во `list_timetable_entries`."
+        ),
+        annotations=ToolAnnotations(
+            title="Простории во распоред",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("list_timetable_rooms")
+    async def list_timetable_rooms_tool(
+        id: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "ID на распоредот добиен од `list_timetables`. Ако не е зададено, "
+                    "се користи моментално активниот распоред."
+                ),
+                examples=["28"],
+            ),
+        ] = None,
+    ) -> list[TimetableEntity]:
+        return list_timetable_rooms(id)
+
+    @mcp.tool(
+        name="list_timetable_courses",
+        description=(
+            "Враќа предмети во распоред. Секоја ставка содржи ID и име; ID може да се "
+            "користи како `course_id` во `list_timetable_entries`."
+        ),
+        annotations=ToolAnnotations(
+            title="Предмети во распоред",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("list_timetable_courses")
+    async def list_timetable_courses_tool(
+        id: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "ID на распоредот добиен од `list_timetables`. Ако не е зададено, "
+                    "се користи моментално активниот распоред."
+                ),
+                examples=["28"],
+            ),
+        ] = None,
+    ) -> list[TimetableEntity]:
+        return list_timetable_courses(id)
+
+    @mcp.tool(
+        name="list_timetable_entries",
+        description=(
+            "Враќа термини од распоред што ги задоволуваат зададените ID филтри "
+            "(комбинирани со И). Мора да биде зададен барем еден од `group_id`, "
+            "`professor_id`, `room_id` или `course_id`; инаку враќа празна листа."
+        ),
+        annotations=ToolAnnotations(
+            title="Термини од распоред по ID филтри",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("list_timetable_entries")
+    async def list_timetable_entries_tool(
+        id: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "ID на распоредот добиен од `list_timetables`. Ако не е зададено, "
+                    "се користи моментално активниот распоред."
+                ),
+                examples=["28"],
+            ),
+        ] = None,
+        group_id: Annotated[
+            str | None,
+            Field(
+                description="ID на групата добиен од `list_timetable_groups`.",
+                examples=["15"],
+            ),
+        ] = None,
+        professor_id: Annotated[
+            str | None,
+            Field(
+                description="ID на професорот добиен од `list_timetable_professors`.",
+                examples=["-123"],
+            ),
+        ] = None,
+        room_id: Annotated[
+            str | None,
+            Field(
+                description="ID на просторијата добиен од `list_timetable_rooms`.",
+                examples=["9"],
+            ),
+        ] = None,
+        course_id: Annotated[
+            str | None,
+            Field(
+                description="ID на предметот добиен од `list_timetable_courses`.",
+                examples=["30"],
+            ),
+        ] = None,
+        day: Annotated[
+            TimetableDay | None,
+            Field(
+                description="Ден во неделата.",
+                examples=["Понеделник"],
+            ),
+        ] = None,
+        lesson_type: Annotated[
+            TimetableLessonType | None,
+            Field(
+                description="Тип на термин: предавање, аудиториски вежби или лабораториски вежби.",
+                examples=["предавање"],
+            ),
+        ] = None,
+        start_after: Annotated[
+            str | None,
+            Field(
+                description="Вклучува само термини што почнуваат во или по ова време (HH:MM).",
+                examples=["10:00"],
+                pattern=r"^\d{2}:\d{2}$",
+            ),
+        ] = None,
+        end_before: Annotated[
+            str | None,
+            Field(
+                description="Вклучува само термини што завршуваат во или пред ова време (HH:MM).",
+                examples=["14:00"],
+                pattern=r"^\d{2}:\d{2}$",
+            ),
+        ] = None,
+    ) -> list[TimetableEntry]:
+        return list_timetable_entries(
+            id=id,
+            group_id=group_id,
+            professor_id=professor_id,
+            room_id=room_id,
+            course_id=course_id,
+            day=day,
+            lesson_type=lesson_type,
+            start_after=start_after,
+            end_before=end_before,
+        )
 
     @mcp.tool(
         name="list_courses",
