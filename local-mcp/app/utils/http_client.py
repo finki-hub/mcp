@@ -45,6 +45,7 @@ class _JsonCache[JsonDocument]:
 
 _courses_cache = _JsonCache[list[dict]]("courses.json")
 _staff_cache = _JsonCache[list[dict]]("staff.json")
+_rooms_cache = _JsonCache[list[dict]]("rooms.json")
 _sessions_cache = _JsonCache[dict[str, str]]("sessions.json")
 
 
@@ -62,6 +63,14 @@ def get_staff() -> list[dict]:
     one hour old.
     """
     return _staff_cache.get()
+
+
+def get_rooms() -> list[dict]:
+    """
+    Fetch rooms from R2 storage, returning a cached copy if it is less than
+    one hour old.
+    """
+    return _rooms_cache.get()
 
 
 def get_exam_sessions() -> dict[str, str]:
