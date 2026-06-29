@@ -36,7 +36,7 @@ def _clean(value: object) -> str | None:
 def _to_int(value: object, default: int = 0) -> int:
     try:
         return int(str(value))
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return default
 
 
