@@ -18,8 +18,9 @@ class _JsonCache[JsonDocument]:
     failed refresh, the stale cache is returned when available.
     """
 
-    def __init__(self, filename: str) -> None:
+    def __init__(self, filename: str, base_url: str | None = None) -> None:
         self._filename = filename
+        self._base_url = base_url
         self._data: JsonDocument | None = None
         self._timestamp = 0.0
 
@@ -28,7 +29,8 @@ class _JsonCache[JsonDocument]:
         if self._data is not None and (now - self._timestamp) < _CACHE_TTL:
             return self._data
 
-        url = f"{_settings.DATA_STORAGE_URL.rstrip('/')}/{self._filename}"
+        base_url = self._base_url or _settings.DATA_STORAGE_URL
+        url = f"{base_url.rstrip('/')}/{self._filename}"
         try:
             response = httpx.get(url, timeout=30)
             response.raise_for_status()
@@ -47,6 +49,11 @@ _courses_cache = _JsonCache[list[dict]]("courses.json")
 _staff_cache = _JsonCache[list[dict]]("staff.json")
 _rooms_cache = _JsonCache[list[dict]]("rooms.json")
 _sessions_cache = _JsonCache[dict[str, str]]("sessions.json")
+_timetables_cache = _JsonCache[list[dict]](
+    "timetables",
+    base_url=_settings.TIMETABLES_API_URL,
+)
+_timetable_detail_caches: dict[str, _JsonCache[dict]] = {}
 
 
 def get_courses() -> list[dict]:
@@ -79,3 +86,30 @@ def get_exam_sessions() -> dict[str, str]:
     copy if it is less than one hour old.
     """
     return _sessions_cache.get()
+
+
+def get_timetables() -> list[dict]:
+    """
+    Fetch timetable summaries, returning a cached copy if it is less than one
+    hour old.
+    """
+    return _timetables_cache.get()
+
+
+def get_timetable_detail(id: str) -> dict:
+    """
+    Fetch a timetable by ID, returning a cached copy if it is less than one
+    hour old.
+    """
+    timetable_id = id.strip()
+    if not timetable_id:
+        raise ValueError("Timetable ID is required")
+
+    cache = _timetable_detail_caches.setdefault(
+        timetable_id,
+        _JsonCache[dict](
+            f"timetables/{timetable_id}",
+            base_url=_settings.TIMETABLES_API_URL,
+        ),
+    )
+    return cache.get()
