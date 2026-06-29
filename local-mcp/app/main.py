@@ -19,6 +19,7 @@ from app.schemas.course import (
     CourseTag,
     StudyProgram,
 )
+from app.schemas.room import RoomData, RoomLocation, RoomMatch, RoomType
 from app.schemas.session import ExamSessionScheduleFiles
 from app.schemas.staff import (
     StaffMatch,
@@ -33,6 +34,7 @@ from app.tools.course import (
     get_course_staff,
     list_courses,
 )
+from app.tools.room import get_room_data, list_rooms
 from app.tools.session import list_exam_session_schedules
 from app.tools.staff import get_staff_member, list_staff
 from app.utils.analytics import (
@@ -246,6 +248,88 @@ def make_app(settings: Settings) -> FastMCP:
         ],
     ) -> CourseParticipants:
         return get_course_participants(course_name)
+
+    @mcp.tool(
+        name="list_rooms",
+        description=(
+            "Враќа листа на простории што ги задоволуваат зададените филтри "
+            "(комбинирани со И). Сите филтри се опционални."
+        ),
+        annotations=ToolAnnotations(
+            title="Листа на простории по филтри",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("list_rooms")
+    async def list_rooms_tool(
+        type: Annotated[
+            RoomType | None,
+            Field(
+                description="Тип на просторијата.",
+                examples=["Лабораторија", "Кабинет"],
+            ),
+        ] = None,
+        location: Annotated[
+            RoomLocation | None,
+            Field(
+                description="Локација на просторијата.",
+                examples=["ТМФ", "Анекс на ФЕИТ"],
+            ),
+        ] = None,
+        floor: Annotated[
+            str | None,
+            Field(
+                description="Кат на просторијата.",
+                examples=["0", "1", "-1"],
+            ),
+        ] = None,
+        min_capacity: Annotated[
+            int | None,
+            Field(
+                description="Минимален капацитет на просторијата.",
+                ge=0,
+                examples=[40],
+            ),
+        ] = None,
+    ) -> list[RoomMatch]:
+        return list_rooms(
+            type=type,
+            location=location,
+            floor=floor,
+            min_capacity=min_capacity,
+        )
+
+    @mcp.tool(
+        name="get_room_data",
+        description=(
+            "Враќа сите податоци за просторија: тип, локација, насоки, кат, "
+            "капацитет и линк до MRBS распоред."
+        ),
+        annotations=ToolAnnotations(
+            title="Податоци за просторија",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("get_room_data")
+    async def get_room_data_tool(
+        name: Annotated[
+            str,
+            Field(
+                description=(
+                    "Име на просторијата. Совпаѓањето на името е толерантно (fuzzy) и "
+                    "поддржува латиница; ако нема точно совпаѓање, враќа предлози."
+                ),
+                examples=["Ф10", "f10", "Б2.1", "b21", "amfiteatar"],
+            ),
+        ],
+    ) -> RoomData:
+        return get_room_data(name)
 
     @mcp.tool(
         name="list_staff",
