@@ -7,7 +7,7 @@ dependencies = [
   "beautifulsoup4>=4.15.0",
   "cyrtranslit>=1.2.0",
   "httpx>=0.28.1",
-  "mcp[cli]>=1.28.0",
+  "mcp[cli]>=1.28.1",
   "posthog>=7.21.0",
   "thefuzz>=0.22.1",
 ]
