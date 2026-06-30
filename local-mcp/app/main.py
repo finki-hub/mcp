@@ -8,6 +8,7 @@ from pydantic import Field
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
+from app.schemas.anto import AntoQuote
 from app.schemas.committee import CommitteeRecommendation
 from app.schemas.course import (
     AccreditationYear,
@@ -34,6 +35,7 @@ from app.schemas.timetable import (
     TimetableLessonType,
     TimetableSummary,
 )
+from app.tools.anto import get_random_anto_quote
 from app.tools.committee import CommitteeRequest, recommend_committee
 from app.tools.course import (
     get_course_data,
@@ -103,6 +105,21 @@ def make_app(settings: Settings) -> FastMCP:
     @track_tool("list_exam_session_schedules")
     async def list_exam_session_schedules_tool() -> ExamSessionScheduleFiles:
         return list_exam_session_schedules()
+
+    @mcp.tool(
+        name="get_random_anto_quote",
+        description="Враќа случајна Анто цитата: хумористична изрека од ФИНКИ фолклорот за Анто.",
+        annotations=ToolAnnotations(
+            title="Случајна Анто цитата",
+            destructiveHint=False,
+            idempotentHint=False,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("get_random_anto_quote")
+    async def get_random_anto_quote_tool() -> AntoQuote:
+        return get_random_anto_quote()
 
     @mcp.tool(
         name="list_timetables",

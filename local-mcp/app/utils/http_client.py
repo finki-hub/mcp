@@ -49,6 +49,7 @@ _courses_cache = _JsonCache[list[dict]]("courses.json")
 _staff_cache = _JsonCache[list[dict]]("staff.json")
 _rooms_cache = _JsonCache[list[dict]]("rooms.json")
 _sessions_cache = _JsonCache[dict[str, str]]("sessions.json")
+_anto_quotes_cache = _JsonCache[list[str]]("anto.json")
 _timetables_cache = _JsonCache[list[dict]](
     "timetables",
     base_url=_settings.TIMETABLES_API_URL,
@@ -86,6 +87,14 @@ def get_exam_sessions() -> dict[str, str]:
     copy if it is less than one hour old.
     """
     return _sessions_cache.get()
+
+
+def get_anto_quotes() -> list[str]:
+    """
+    Fetch Anto quotes from R2 storage, returning a cached copy if it is less
+    than one hour old.
+    """
+    return _anto_quotes_cache.get()
 
 
 def get_timetables() -> list[dict]:
