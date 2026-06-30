@@ -143,7 +143,7 @@ async def recommend_committee(
             response = await client.post(url, json=_payload(request))
             response.raise_for_status()
             data = response.json()
-    except (httpx.HTTPError, ValueError):
+    except httpx.HTTPError, ValueError:
         logger.exception("Committee recommendation request failed")
         return _first_option(
             mode=mode,
