@@ -105,16 +105,16 @@ def _recommendations(
     data: dict[str, JsonValue],
     fallback_mentor: str | None,
 ) -> list[CommitteeOption]:
-    selected = _option(data, fallback_mentor)
-    recommendations = [selected]
     alternatives = data.get("alternatives")
     if isinstance(alternatives, list):
-        recommendations.extend(
+        recommendations = [
             _option(item, fallback_mentor)
-            for item in alternatives[1:]
+            for item in alternatives
             if isinstance(item, dict)
-        )
-    return recommendations
+        ]
+        if recommendations:
+            return recommendations
+    return [_option(data, fallback_mentor)]
 
 
 def _payload(request: CommitteeRequest) -> dict[str, JsonValue]:
