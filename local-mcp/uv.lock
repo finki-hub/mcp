@@ -420,7 +420,7 @@ requires-dist = [
     { name = "cyrtranslit", specifier = ">=1.2.0" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "mcp", extras = ["cli"], specifier = ">=1.28.1" },
-    { name = "posthog", specifier = ">=7.21.2" },
+    { name = "posthog", specifier = ">=7.21.3" },
     { name = "thefuzz", specifier = ">=0.22.1" },
 ]
 
@@ -532,7 +532,7 @@ wheels = [
 
 [[package]]
 name = "posthog"
-version = "7.21.2"
+version = "7.21.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "backoff" },
@@ -540,9 +540,9 @@ dependencies = [
     { name = "requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6f/d4/91b88c706264cba1c73cb761c319bc833240273b258c25de89208c5c33f4/posthog-7.21.2.tar.gz", hash = "sha256:26460ab3589445e969cef51074198685ea27439fc3def6612a9ce1841685acce", size = 309338, upload-time = "2026-07-01T07:44:21.271Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e3/d4/ac12ee84633287c719cbbe5e8c9bee23777f87ed25190ad18bf003787b18/posthog-7.21.3.tar.gz", hash = "sha256:2192497210bb1291587c51bdd6edc475043aebe03072d718431e710360fcd329", size = 308297, upload-time = "2026-07-02T15:05:08.37Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bc/d2/f7d062da696fd8cdfe2992f832547b2b2feb237a350785163f77d6230f6b/posthog-7.21.2-py3-none-any.whl", hash = "sha256:8672d5b6dd10713abbe31c58668a6094f2929ffc8618c6f52744a63f2f192623", size = 371320, upload-time = "2026-07-01T07:44:19.233Z" },
+    { url = "https://files.pythonhosted.org/packages/c6/53/0cbf0aa0b90be2076e5f8297b57c222adc6fe06ae46914cba419d35603da/posthog-7.21.3-py3-none-any.whl", hash = "sha256:eb6ad7e1704c0797e9cbfe0518bfb40bc3a56e3f140fd565d2a1d854c9615710", size = 370434, upload-time = "2026-07-02T15:05:06.79Z" },
 ]
 
 [[package]]
