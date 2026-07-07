@@ -8,7 +8,7 @@ dependencies = [
   "cyrtranslit>=1.2.0",
   "httpx>=0.28.1",
   "mcp[cli]>=1.28.1",
-  "posthog>=7.21.3",
+  "posthog>=7.22.0",
   "thefuzz>=0.22.1",
 ]
 
