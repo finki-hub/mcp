@@ -9,7 +9,6 @@ from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
 from app.schemas.anto import AntoQuote
-from app.schemas.committee import CommitteeRecommendation
 from app.schemas.course import (
     AccreditationYear,
     Course,
@@ -36,7 +35,6 @@ from app.schemas.timetable import (
     TimetableSummary,
 )
 from app.tools.anto import get_random_anto_quote
-from app.tools.committee import CommitteeRequest, recommend_committee
 from app.tools.course import (
     get_course_data,
     get_course_participants,
@@ -664,73 +662,6 @@ def make_app(settings: Settings) -> FastMCP:
         ],
     ) -> StaffMember:
         return get_staff_member(name)
-
-    @mcp.tool(
-        name="recommend_thesis_committee",
-        description=(
-            "Препорачува една или повеќе комисии за дипломска работа. Задолжителен е само "
-            "насловот; ако е познат менторот, внеси го во `mentor`. Стави опис, клучни зборови, "
-            "насока или истражувачка област во `context`. Користи `avoid` само за професори кои "
-            "не смеат да бидат предложени. `count` е бројот на опции што корисникот ги бара."
-        ),
-        annotations=ToolAnnotations(
-            title="Препорака на комисија за дипломска",
-            destructiveHint=False,
-            idempotentHint=True,
-            openWorldHint=True,
-            readOnlyHint=True,
-        ),
-    )
-    @track_tool("recommend_thesis_committee")
-    async def recommend_thesis_committee_tool(
-        title: Annotated[
-            str,
-            Field(
-                description="Наслов на дипломската работа.",
-                examples=["Систем за препорака на ментори базиран на вградувања"],
-            ),
-        ],
-        mentor: Annotated[
-            str | None,
-            Field(
-                description="Познат ментор, ако корисникот веќе го избрал.",
-                examples=["Соња Гиевска"],
-            ),
-        ] = None,
-        context: Annotated[
-            str | None,
-            Field(
-                description=(
-                    "Дополнителен контекст во слободен текст: апстракт, клучни зборови, "
-                    "насока, област или други релевантни детали."
-                ),
-            ),
-        ] = None,
-        avoid: Annotated[
-            list[str] | None,
-            Field(
-                description="Професори кои треба да се исклучат од препораките.",
-                examples=[["Иван Чорбев"]],
-            ),
-        ] = None,
-        count: Annotated[
-            int,
-            Field(
-                ge=1,
-                le=5,
-                description="Колку различни препораки да се вратат, од 1 до 5.",
-            ),
-        ] = 1,
-    ) -> CommitteeRecommendation:
-        return await recommend_committee(
-            CommitteeRequest(
-                title=title,
-                mentor=mentor,
-                context=context,
-                avoid=avoid or [],
-                count=count,
-            ),
-        )
 
     return mcp
 
