@@ -312,7 +312,11 @@ class _StreamedDefenseCache[Record]:
             except DefenseSnapshotRefreshError as error:
                 self._refresh_error = error
                 self._refresh_generation += 1
-                logger.warning("Failed to refresh %s snapshot", self._endpoint.domain)
+                logger.warning(
+                    "Failed to refresh %s snapshot: %s",
+                    self._endpoint.domain,
+                    error,
+                )
                 if self._data is None:
                     raise
                 return self._data
