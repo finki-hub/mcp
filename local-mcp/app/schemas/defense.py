@@ -177,7 +177,7 @@ class MasterDefense(BaseModel):
     progress: str = Field(
         ...,
         description="Тековен чекор во формат „x/y“.",
-        examples=["23/24"],
+        examples=["24/25"],
         pattern=r"^[0-9]+/[0-9]+$",
     )
     student: str = Field(
