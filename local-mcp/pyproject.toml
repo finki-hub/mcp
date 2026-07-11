@@ -7,6 +7,7 @@ dependencies = [
   "beautifulsoup4>=4.15.0",
   "cyrtranslit>=1.2.0",
   "httpx>=0.28.1",
+  "ijson>=3.5.0",
   "mcp[cli]>=1.28.1",
   "posthog>=7.22.0",
   "thefuzz>=0.22.1",
@@ -18,6 +19,10 @@ dev = ["mypy>=2.2.0", "ruff>=0.15.21"]
 [tool.mypy]
 python_version = "3.14"
 plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["ijson", "ijson.*"]
+ignore_missing_imports = true
 
 [tool.ruff]
 target-version = "py314"
@@ -62,6 +67,7 @@ select = [
   "RUF",
 ]
 ignore = [
+  "COM812",
   "PLR2004",
   "PLR0912",
   "PLR0915",
