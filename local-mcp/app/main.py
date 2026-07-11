@@ -2,6 +2,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Annotated
 
+import anyio
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 from pydantic import Field
@@ -19,6 +20,7 @@ from app.schemas.course import (
     CourseTag,
     StudyProgram,
 )
+from app.schemas.defense import DefenseMatch, DiplomaResult, MasterResult
 from app.schemas.room import RoomData, RoomLocation, RoomMatch, RoomType
 from app.schemas.session import ExamSessionScheduleFiles
 from app.schemas.staff import (
@@ -41,6 +43,8 @@ from app.tools.course import (
     get_course_staff,
     list_courses,
 )
+from app.tools.diploma import get_diploma, list_diplomas
+from app.tools.master import get_master, list_masters
 from app.tools.room import get_room_data, list_rooms
 from app.tools.session import list_exam_session_schedules
 from app.tools.staff import get_staff_member, list_staff
@@ -662,6 +666,158 @@ def make_app(settings: Settings) -> FastMCP:
         ],
     ) -> StaffMember:
         return get_staff_member(name)
+
+    @mcp.tool(
+        name="list_diplomas",
+        description=(
+            "Враќа до 20 дипломски работи по студент, ментор или наслов. Потребен е "
+            "барем еден непразен филтер; при пребарување со број на индекс не се "
+            "задаваат други филтри, а другите филтри се комбинираат со И."
+        ),
+        annotations=ToolAnnotations(
+            title="Листа на дипломски работи",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("list_diplomas")
+    async def list_diplomas_tool(
+        student: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "Име на студент или број на индекс; името поддржува толерантно "
+                    "совпаѓање и латиница, а пребарувањето со број на индекс не се "
+                    "комбинира со други филтри."
+                ),
+                max_length=256,
+            ),
+        ] = None,
+        mentor: Annotated[
+            str | None,
+            Field(
+                description="Име на менторот; поддржува толерантно совпаѓање и латиница.",
+                max_length=256,
+            ),
+        ] = None,
+        title: Annotated[
+            str | None,
+            Field(
+                description="Наслов или дел од насловот на дипломската работа.",
+                max_length=1024,
+            ),
+        ] = None,
+    ) -> list[DefenseMatch]:
+        return await anyio.to_thread.run_sync(
+            lambda: list_diplomas(student=student, mentor=mentor, title=title),
+        )
+
+    @mcp.tool(
+        name="get_diploma",
+        description=(
+            "Враќа податоци за дипломска работа по име на студент или број на индекс. "
+            "При нееднозначно пребарување враќа предлози."
+        ),
+        annotations=ToolAnnotations(
+            title="Податоци за дипломска работа",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("get_diploma")
+    async def get_diploma_tool(
+        student: Annotated[
+            str,
+            Field(
+                description=(
+                    "Име на студент или број на индекс; името поддржува толерантно "
+                    "совпаѓање и латиница."
+                ),
+                max_length=256,
+            ),
+        ],
+    ) -> DiplomaResult:
+        return await anyio.to_thread.run_sync(get_diploma, student)
+
+    @mcp.tool(
+        name="list_masters",
+        description=(
+            "Враќа до 20 магистерски трудови по студент, ментор или наслов. Потребен "
+            "е барем еден непразен филтер; при пребарување со број на индекс не се "
+            "задаваат други филтри, а другите филтри се комбинираат со И."
+        ),
+        annotations=ToolAnnotations(
+            title="Листа на магистерски трудови",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("list_masters")
+    async def list_masters_tool(
+        student: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "Име на студент или број на индекс; името поддржува толерантно "
+                    "совпаѓање и латиница, а пребарувањето со број на индекс не се "
+                    "комбинира со други филтри."
+                ),
+                max_length=256,
+            ),
+        ] = None,
+        mentor: Annotated[
+            str | None,
+            Field(
+                description="Име на менторот; поддржува толерантно совпаѓање и латиница.",
+                max_length=256,
+            ),
+        ] = None,
+        title: Annotated[
+            str | None,
+            Field(
+                description="Наслов или дел од насловот на магистерскиот труд.",
+                max_length=1024,
+            ),
+        ] = None,
+    ) -> list[DefenseMatch]:
+        return await anyio.to_thread.run_sync(
+            lambda: list_masters(student=student, mentor=mentor, title=title),
+        )
+
+    @mcp.tool(
+        name="get_master",
+        description=(
+            "Враќа податоци за магистерски труд по име на студент или број на индекс. "
+            "При нееднозначно пребарување враќа предлози."
+        ),
+        annotations=ToolAnnotations(
+            title="Податоци за магистерски труд",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("get_master")
+    async def get_master_tool(
+        student: Annotated[
+            str,
+            Field(
+                description=(
+                    "Име на студент или број на индекс; името поддржува толерантно "
+                    "совпаѓање и латиница."
+                ),
+                max_length=256,
+            ),
+        ],
+    ) -> MasterResult:
+        return await anyio.to_thread.run_sync(get_master, student)
 
     return mcp
 
