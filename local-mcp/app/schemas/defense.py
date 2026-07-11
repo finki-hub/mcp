@@ -100,8 +100,8 @@ class Diploma(BaseModel):
     )
     file_id: str | None = Field(
         ...,
-        description="ID на датотеката, ако е достапен.",
-        examples=["file-42", None],
+        description="ID на датотеката за преземање, ако е достапна.",
+        examples=["42", None],
     )
     member1: str = Field(
         ...,
