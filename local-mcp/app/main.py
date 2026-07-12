@@ -720,7 +720,7 @@ def make_app(settings: Settings) -> FastMCP:
             "Враќа податоци за дипломска работа по име на студент или број на индекс. "
             "При нееднозначно пребарување враќа предлози. Ако `file_id` е достапен, "
             "датотеката се презема од "
-            "`https://diplomski-api.finki-hub.com/download/{file_id}`."
+            "`https://diplomski-api.finki-hub.com/diplomas/download/{file_id}`."
         ),
         annotations=ToolAnnotations(
             title="Податоци за дипломска работа",
@@ -796,7 +796,9 @@ def make_app(settings: Settings) -> FastMCP:
         name="get_master",
         description=(
             "Враќа податоци за магистерски труд по име на студент или број на индекс. "
-            "При нееднозначно пребарување враќа предлози."
+            "При нееднозначно пребарување враќа предлози. Ако `file_id` е достапен, "
+            "датотеката се презема од "
+            "`https://magisterski-api.finki-hub.com/masters/download/{file_id}`."
         ),
         annotations=ToolAnnotations(
             title="Податоци за магистерски труд",

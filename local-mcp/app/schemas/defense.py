@@ -154,6 +154,11 @@ class MasterDefense(BaseModel):
         description="Опис на магистерскиот труд.",
         examples=["Краток опис на трудот."],
     )
+    file_id: str | None = Field(
+        ...,
+        description="ID на датотеката за преземање, ако е достапна.",
+        examples=["42", None],
+    )
     member: str = Field(
         ...,
         description="Член на комисијата.",
@@ -229,6 +234,7 @@ class MasterPayload(BaseModel):
         ..., validation_alias="dateOfPresentation"
     )
     description: DefenseDescriptionText = Field(...)
+    file_id: DefenseScalarText | None = Field(..., validation_alias="fileId")
     member: DefenseScalarText = Field(...)
     mentor: DefenseScalarText = Field(...)
     president: DefenseScalarText = Field(...)
@@ -240,6 +246,7 @@ class MasterPayload(BaseModel):
         return MasterDefense(
             date_of_presentation=self.date_of_presentation,
             description=self.description,
+            file_id=self.file_id,
             member=self.member,
             mentor=self.mentor,
             president=self.president,
