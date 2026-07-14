@@ -9,7 +9,7 @@ dependencies = [
   "httpx>=0.28.1",
   "ijson>=3.5.0",
   "mcp[cli]>=1.28.1",
-  "posthog>=7.22.1",
+  "posthog>=7.22.2",
   "thefuzz>=0.22.1",
 ]
 
