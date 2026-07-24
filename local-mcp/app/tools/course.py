@@ -254,6 +254,7 @@ def _resolve_staff_groups(names: list[str], pool: list[str]) -> list[list[str]] 
 
 
 def list_courses(
+    *,
     program: StudyProgram | None = None,
     status: CourseStatus | None = None,
     semester: int | None = None,

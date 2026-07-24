@@ -232,6 +232,7 @@ def list_timetable_courses(id: str | None = None) -> list[TimetableEntity]:
 
 
 def list_timetable_entries(
+    *,
     id: str | None = None,
     group_id: str | None = None,
     professor_id: str | None = None,

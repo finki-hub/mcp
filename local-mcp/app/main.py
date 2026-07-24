@@ -274,6 +274,7 @@ def make_app(settings: Settings) -> FastMCP:
     )
     @track_tool("list_timetable_entries")
     async def list_timetable_entries_tool(
+        *,
         id: Annotated[
             str | None,
             Field(
@@ -373,6 +374,7 @@ def make_app(settings: Settings) -> FastMCP:
     )
     @track_tool("list_courses")
     async def list_courses_tool(
+        *,
         program: Annotated[
             StudyProgram | None,
             Field(
