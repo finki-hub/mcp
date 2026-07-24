@@ -62,7 +62,7 @@ class _JsonCache[JsonDocument]:
         return self._data
 
 
-type _JsonScalar = None | bool | int | float | Decimal | str
+type _JsonScalar = bool | int | float | Decimal | str | None
 type _JsonValue = _JsonScalar | list[_JsonValue] | dict[str, _JsonValue]
 type _DefenseDomain = Literal["diplomas", "masters"]
 type _SafeRefreshIssue = tuple[tuple[str | int, ...], str]
