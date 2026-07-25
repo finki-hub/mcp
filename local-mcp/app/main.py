@@ -22,7 +22,7 @@ from app.schemas.course import (
 )
 from app.schemas.defense import DefenseMatch, DiplomaResult, MasterResult
 from app.schemas.room import RoomData, RoomLocation, RoomMatch, RoomType
-from app.schemas.session import ExamSessionScheduleFiles
+from app.schemas.session import ExamSessionScheduleFile
 from app.schemas.staff import (
     StaffMatch,
     StaffMember,
@@ -93,8 +93,7 @@ def make_app(settings: Settings) -> FastMCP:
         name="list_exam_session_schedules",
         description=(
             "Враќа достапни датотеки со распореди за испитни сесии и колоквиумски недели. "
-            "Секоја ставка содржи ознака на сесијата и име на датотека. За целосен линк за "
-            "преземање, додади го `filename` на крајот од `base_url`."
+            "Секоја ставка содржи ознака на сесијата и линк за преземање."
         ),
         annotations=ToolAnnotations(
             title="Датотеки со распореди за испитни сесии",
@@ -105,7 +104,7 @@ def make_app(settings: Settings) -> FastMCP:
         ),
     )
     @track_tool("list_exam_session_schedules")
-    async def list_exam_session_schedules_tool() -> ExamSessionScheduleFiles:
+    async def list_exam_session_schedules_tool() -> list[ExamSessionScheduleFile]:
         return list_exam_session_schedules()
 
     @mcp.tool(
