@@ -83,7 +83,7 @@ class Room(BaseModel):
     )
 
 
-class RoomData(BaseModel):
+class RoomData(PrunedModel):
     name: str = Field(
         ...,
         description="Име на просторијата",
