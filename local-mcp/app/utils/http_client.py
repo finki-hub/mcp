@@ -329,11 +329,11 @@ class _StreamedDefenseCache[Record]:
 
 
 def _validate_diploma(item: _JsonValue) -> Diploma:
-    return DiplomaPayload.model_validate(item).to_public()
+    return DiplomaPayload.model_validate(item).to_public(_settings.DIPLOMAS_API_URL)
 
 
 def _validate_master(item: _JsonValue) -> MasterDefense:
-    return MasterPayload.model_validate(item).to_public()
+    return MasterPayload.model_validate(item).to_public(_settings.MASTERS_API_URL)
 
 
 _courses_cache = _JsonCache[list[dict]]("courses.json")

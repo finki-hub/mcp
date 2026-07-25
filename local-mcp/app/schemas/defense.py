@@ -44,6 +44,12 @@ def _preserve_valid_student(raw: str) -> str:
     return raw
 
 
+def _download_url(base_url: str, file_id: str | None) -> str | None:
+    if file_id is None:
+        return None
+    return f"{base_url.rstrip('/')}/download/{file_id}"
+
+
 def _bounded_text(max_length: int) -> AfterValidator:
     def validate(value: str) -> str:
         if len(value) > max_length:
@@ -98,10 +104,10 @@ class Diploma(BaseModel):
         description="Опис на дипломската работа.",
         examples=["Краток опис на трудот."],
     )
-    file_id: str | None = Field(
+    download_url: str | None = Field(
         ...,
-        description="ID на датотеката за преземање, ако е достапна.",
-        examples=["42", None],
+        description="Линк за преземање на дипломската работа, ако е достапен.",
+        examples=["https://diplomski-api.finki-hub.com/diplomas/download/10148", None],
     )
     member1: str = Field(
         ...,
@@ -154,10 +160,10 @@ class MasterDefense(BaseModel):
         description="Опис на магистерскиот труд.",
         examples=["Краток опис на трудот."],
     )
-    file_id: str | None = Field(
+    download_url: str | None = Field(
         ...,
-        description="ID на датотеката за преземање, ако е достапна.",
-        examples=["42", None],
+        description="Линк за преземање на магистерскиот труд, ако е достапен.",
+        examples=["https://magisterski-api.finki-hub.com/masters/download/810", None],
     )
     member: str = Field(
         ...,
@@ -212,11 +218,11 @@ class DiplomaPayload(BaseModel):
     student: ValidatedUpstreamStudent = Field(...)
     title: DefenseTitleText = Field(...)
 
-    def to_public(self) -> Diploma:
+    def to_public(self, base_url: str) -> Diploma:
         return Diploma(
             date_of_submission=self.date_of_submission,
             description=self.description,
-            file_id=self.file_id,
+            download_url=_download_url(base_url, self.file_id),
             member1=self.member1,
             member2=self.member2,
             mentor=self.mentor,
@@ -242,11 +248,11 @@ class MasterPayload(BaseModel):
     student: ValidatedUpstreamStudent = Field(...)
     title: DefenseTitleText = Field(...)
 
-    def to_public(self) -> MasterDefense:
+    def to_public(self, base_url: str) -> MasterDefense:
         return MasterDefense(
             date_of_presentation=self.date_of_presentation,
             description=self.description,
-            file_id=self.file_id,
+            download_url=_download_url(base_url, self.file_id),
             member=self.member,
             mentor=self.mentor,
             president=self.president,
