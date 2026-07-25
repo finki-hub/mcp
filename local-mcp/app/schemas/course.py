@@ -133,7 +133,7 @@ class CourseData(BaseModel):
     accreditations: dict[str, Accreditation]
 
 
-class _CourseLookup(BaseModel):
+class _CourseLookup(PrunedModel):
     name: str = Field(
         ...,
         description="Име на предметот",
