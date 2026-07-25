@@ -44,12 +44,7 @@ class StaffMatch(PrunedModel):
     )
 
 
-class StaffMember(BaseModel):
-    name: str = Field(
-        ...,
-        description="Име и презиме на вработениот",
-        examples=["Александар Стојменски"],
-    )
+class StaffProfile(BaseModel):
     title: str | None = Field(
         None,
         description="Титула на вработениот",
@@ -60,8 +55,8 @@ class StaffMember(BaseModel):
         description="Позиција на вработениот.",
         examples=["Доцент"],
     )
-    active: bool | None = Field(
-        None,
+    active: bool = Field(
+        ...,
         description="Дали вработениот е активен или не (пензиониран).",
         examples=[True],
     )
@@ -89,6 +84,18 @@ class StaffMember(BaseModel):
         None,
         description="Линк до профилот на веб-страницата на ФИНКИ",
         examples=["https://www.finki.ukim.mk/mk/staff/aleksandar-tenev"],
+    )
+
+
+class StaffMember(PrunedModel):
+    name: str = Field(
+        ...,
+        description="Име и презиме на вработениот",
+        examples=["Александар Стојменски"],
+    )
+    staff: StaffProfile | None = Field(
+        None,
+        description="Податоци за вработениот",
     )
     error: str | None = Field(
         None,
