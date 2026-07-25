@@ -4,6 +4,7 @@ from app.schemas.staff import (
     StaffMatch,
     StaffMember,
     StaffPosition,
+    StaffProfile,
     StaffTitle,
 )
 from app.utils.http_client import get_staff
@@ -110,13 +111,15 @@ def get_staff_member(name: str) -> StaffMember:
     record = found.record
     return StaffMember(
         name=record.get("name", ""),
-        title=record.get("title") or None,
-        position=record.get("position") or None,
-        active=_is_active(record),
-        email=record.get("email") or None,
-        cabinet=record.get("cabinet") or None,
-        consultations=record.get("consultations") or None,
-        courses=record.get("courses") or None,
-        profile=record.get("profile") or None,
+        staff=StaffProfile(
+            title=record.get("title") or None,
+            position=record.get("position") or None,
+            active=_is_active(record),
+            email=record.get("email") or None,
+            cabinet=record.get("cabinet") or None,
+            consultations=record.get("consultations") or None,
+            courses=record.get("courses") or None,
+            profile=record.get("profile") or None,
+        ),
         match_info=found.match_info,
     )
