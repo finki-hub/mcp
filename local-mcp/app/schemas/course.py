@@ -30,16 +30,28 @@ class CourseStatus(StrEnum):
 
 
 class CourseTag(StrEnum):
-    AI = "ai"
-    CODING = "coding"
-    DATABASES = "databases"
-    DEVOPS = "devops"
-    FILLER = "filler"
-    MATH = "math"
-    MOBILE = "mobile"
-    NETWORKING = "networking"
-    SECURITY = "security"
-    WEB = "web"
+    """
+    Тематски ознаки (тагови). „филер“ = лесен предмет, „препорака на Стефан“ = личен избор на Стефан, создавачот на ФИНКИ Хаб.
+    """
+
+    AI = "AI"
+    CODING = "програмирање"
+    DATABASES = "бази на податоци"
+    DELEMANGI = "препорака на Стефан"
+    DEVOPS = "DevOps"
+    FILLER = "филер"
+    MATH = "математика"
+    MOBILE = "мобилни технологии"
+    NETWORKING = "компјутерски мрежи"
+    SECURITY = "безбедност"
+    WEB = "веб"
+
+    @classmethod
+    def from_upstream(cls, tag: str) -> str | None:
+        try:
+            return cls[tag.upper()].value
+        except KeyError:
+            return None
 
 
 class AccreditationYear(StrEnum):
@@ -154,8 +166,8 @@ class _CourseLookup(BaseModel):
 class Course(_CourseLookup):
     tags: list[str] | None = Field(
         None,
-        description="Ознаки (тагови) поврзани со предметот",
-        examples=[["ai", "coding"]],
+        description="Тематски ознаки (тагови) поврзани со предметот",
+        examples=[["AI", "програмирање"]],
     )
     channel: bool | None = Field(
         None,
@@ -204,8 +216,8 @@ class CourseMatch(PrunedModel):
     )
     tags: list[str] | None = Field(
         None,
-        description="Ознаки (тагови) на предметот",
-        examples=[["ai", "web"]],
+        description="Тематски ознаки (тагови) на предметот",
+        examples=[["AI", "веб"]],
     )
     professors: list[str] | None = Field(
         None,

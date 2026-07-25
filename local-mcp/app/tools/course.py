@@ -37,6 +37,11 @@ def _split_people(value: str | None) -> list[str]:
     return [line.strip() for line in value.split("\n") if line.strip()]
 
 
+def _split_tags(value: str | None) -> list[str]:
+    tags = (tag.strip() for tag in (value or "").split(","))
+    return [CourseTag.from_upstream(tag) or tag for tag in tags if tag]
+
+
 def _build_course(record: dict) -> CourseData:
     professors_raw = record.get("professors") or ""
 
@@ -85,9 +90,7 @@ def _build_course(record: dict) -> CourseData:
 
     return CourseData(
         name=record.get("name", ""),
-        tags=[
-            tag.strip() for tag in (record.get("tags") or "").split(",") if tag.strip()
-        ],
+        tags=_split_tags(record.get("tags")),
         channel=str(record.get("channel") or "").upper() == "TRUE",
         staff=Staff(
             professors=_split_people(record.get("professors")),

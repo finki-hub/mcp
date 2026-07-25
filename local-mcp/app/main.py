@@ -406,8 +406,8 @@ def make_app(settings: Settings) -> FastMCP:
         tags: Annotated[
             list[CourseTag] | None,
             Field(
-                description="Ознаки (тагови); предметот мора да ги содржи сите наведени.",
-                examples=[["ai"]],
+                description="Тематски ознаки (тагови); предметот мора да ги содржи сите наведени.",
+                examples=[["AI"]],
             ),
         ] = None,
         professors: Annotated[
