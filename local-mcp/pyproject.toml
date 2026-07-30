@@ -10,6 +10,7 @@ dependencies = [
   "ijson>=3.5.0",
   "mcp[cli]>=2.0.0",
   "posthog>=7.33.0",
+  "pydantic-settings>=2.14.2",
   "thefuzz>=0.22.1",
 ]
 

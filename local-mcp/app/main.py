@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 import anyio
-from mcp.server.fastmcp import FastMCP
+from mcp.server import MCPServer
 from mcp.types import ToolAnnotations
 from pydantic import Field
 from starlette.requests import Request
@@ -67,9 +67,9 @@ from app.utils.settings import Settings
 settings = Settings()
 
 
-def make_app(settings: Settings) -> FastMCP:
+def make_app(settings: Settings) -> MCPServer:
     @asynccontextmanager
-    async def lifespan(_server: FastMCP) -> AsyncIterator[None]:
+    async def lifespan(_server: MCPServer) -> AsyncIterator[None]:
         init_analytics(settings)
         tools = await _server.list_tools()
         capture_lifecycle_event("server_started", properties={"tool_count": len(tools)})
@@ -79,9 +79,8 @@ def make_app(settings: Settings) -> FastMCP:
             capture_lifecycle_event("server_stopped")
             shutdown_analytics()
 
-    mcp = FastMCP(
-        port=settings.PORT,
-        host=settings.HOST,
+    mcp = MCPServer(
+        "FastMCP",
         lifespan=lifespan,
     )
 
@@ -824,3 +823,11 @@ def make_app(settings: Settings) -> FastMCP:
 
 
 app = make_app(settings)
+
+
+if __name__ == "__main__":
+    app.run(
+        transport="streamable-http",
+        host=settings.HOST,
+        port=settings.PORT,
+    )

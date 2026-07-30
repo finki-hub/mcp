@@ -31,4 +31,4 @@ HEALTHCHECK --interval=30s --timeout=3s CMD wget --quiet --tries=1 --spider http
 
 EXPOSE 8808
 
-CMD ["mcp", "run", "-t", "streamable-http", "app/main.py"]
+CMD ["python", "-m", "app.main"]
