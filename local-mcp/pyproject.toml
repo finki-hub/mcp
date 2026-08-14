@@ -9,7 +9,7 @@ dependencies = [
   "httpx>=0.28.1",
   "ijson>=3.5.0",
   "mcp[cli]>=2.0.0",
-  "posthog>=7.38.3",
+  "posthog>=7.38.4",
   "pydantic-settings>=2.15.0",
   "thefuzz>=0.22.1",
 ]
