@@ -38,6 +38,7 @@ Server runs on `http://localhost:8808`
 - Get available courses (staff/participants)
 - Get course staff/participants information
 - Fuzzy query matching support
+- Course lookup by abbreviation (Cyrillic or Latin, e.g. `АПС`, `БнП`/`БП`, `paps`); shared abbreviations return all matching courses as suggestions
 
 ## License
 
