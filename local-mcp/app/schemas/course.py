@@ -126,6 +126,7 @@ class Accreditation(BaseModel):
 
 class CourseData(BaseModel):
     name: str
+    abbreviation: str | None = None
     tags: list[str]
     channel: bool
     staff: Staff
@@ -138,6 +139,11 @@ class _CourseLookup(PrunedModel):
         ...,
         description="Име на предметот",
         examples=["Структурно програмирање"],
+    )
+    abbreviation: str | None = Field(
+        None,
+        description="Кратенка на предметот",
+        examples=["СП"],
     )
     error: str | None = Field(
         None,
@@ -213,6 +219,11 @@ class CourseMatch(PrunedModel):
         ...,
         description="Име на предметот",
         examples=["Веб програмирање"],
+    )
+    abbreviation: str | None = Field(
+        None,
+        description="Кратенка на предметот",
+        examples=["ВебП"],
     )
     tags: list[str] | None = Field(
         None,

@@ -15,6 +15,10 @@ from app.schemas.course import (
     Staff,
     StudyProgram,
 )
+from app.utils.abbreviation_matcher import (
+    build_abbreviation_index,
+    resolve_abbreviation,
+)
 from app.utils.http_client import get_courses
 from app.utils.query_matcher import match_query_to_group, resolve_query
 
@@ -90,6 +94,7 @@ def _build_course(record: dict) -> CourseData:
 
     return CourseData(
         name=record.get("name", ""),
+        abbreviation=record.get("abbreviation") or None,
         tags=_split_tags(record.get("tags")),
         channel=str(record.get("channel") or "").upper() == "TRUE",
         staff=Staff(
@@ -120,6 +125,29 @@ def _lookup_course(course_name: str) -> _Lookup:
     query = course_name.strip()
     if not query:
         return _Lookup(None, None, "Внесете име на предметот.", None)
+
+    courses = get_courses()
+    abbreviation_matches = resolve_abbreviation(
+        query,
+        build_abbreviation_index(courses),
+    )
+    if len(abbreviation_matches) > 1:
+        return _Lookup(
+            None,
+            None,
+            f"Повеќе предмети одговараат на „{course_name}“",
+            abbreviation_matches,
+        )
+    if abbreviation_matches:
+        matched = next(r for r in courses if r.get("name") == abbreviation_matches[0])
+        match_info = {
+            "original_query": course_name,
+            "matched_course": abbreviation_matches[0],
+            "similarity_score": 100,
+            "match_type": "abbreviation",
+        }
+        return _Lookup(_build_course(matched), match_info, None, None)
+
     if len(query) < _MIN_QUERY_LENGTH:
         return _Lookup(
             None,
@@ -128,7 +156,6 @@ def _lookup_course(course_name: str) -> _Lookup:
             None,
         )
 
-    courses = get_courses()
     course_names = [record.get("name", "") for record in courses]
     resolution = resolve_query(course_name, course_names)
 
@@ -172,6 +199,7 @@ def get_course_data(course_name: str) -> Course:
         )
     return Course(
         name=found.data.name,
+        abbreviation=found.data.abbreviation,
         tags=found.data.tags,
         channel=found.data.channel,
         accreditations=found.data.accreditations,
@@ -189,6 +217,7 @@ def get_course_staff(course_name: str) -> CourseStaff:
         )
     return CourseStaff(
         name=found.data.name,
+        abbreviation=found.data.abbreviation,
         staff=found.data.staff,
         match_info=found.match_info,
     )
@@ -204,6 +233,7 @@ def get_course_participants(course_name: str) -> CourseParticipants:
         )
     return CourseParticipants(
         name=found.data.name,
+        abbreviation=found.data.abbreviation,
         participants=found.data.participants,
         match_info=found.match_info,
     )
@@ -331,6 +361,7 @@ def list_courses(
         matches.append(
             CourseMatch(
                 name=course.name,
+                abbreviation=course.abbreviation,
                 tags=course.tags if tags is not None else None,
                 professors=[p for p in course_professors if p in professor_candidates]
                 or None,
