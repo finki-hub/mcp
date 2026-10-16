@@ -163,7 +163,7 @@ class MasterDefense(BaseModel):
     download_url: str | None = Field(
         ...,
         description="Линк за преземање на магистерскиот труд, ако е достапен.",
-        examples=["https://magisterski-api.finki-hub.com/masters/download/810", None],
+        examples=["https://masters-api.finki-hub.com/masters/download/810", None],
     )
     member: str = Field(
         ...,
