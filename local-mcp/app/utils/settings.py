@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
     DATA_STORAGE_URL: str = "https://assets.finki-hub.com"
     DIPLOMAS_API_URL: str = "https://bachelors-api.finki-hub.com/diplomas"
-    MASTERS_API_URL: str = "https://magisterski-api.finki-hub.com/masters"
+    MASTERS_API_URL: str = "https://masters-api.finki-hub.com/masters"
     TIMETABLES_API_URL: str = "https://timetables-api.finki-hub.com"
     CHAT_BOT_API_URL: str = "http://api:8880"
 
