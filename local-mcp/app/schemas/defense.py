@@ -107,7 +107,7 @@ class Diploma(BaseModel):
     download_url: str | None = Field(
         ...,
         description="Линк за преземање на дипломската работа, ако е достапен.",
-        examples=["https://diplomski-api.finki-hub.com/diplomas/download/10148", None],
+        examples=["https://bachelors-api.finki-hub.com/diplomas/download/10148", None],
     )
     member1: str = Field(
         ...,
