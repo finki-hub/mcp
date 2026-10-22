@@ -243,6 +243,14 @@ def _base_status(value: str) -> str:
     return value.split(" (", maxsplit=1)[0].strip()
 
 
+# The same program was renamed between accreditations, so a filter on either code
+# must match the course's entry under the other.
+_SAME_PROGRAM: dict[str, str] = {
+    StudyProgram.KE: StudyProgram.IE,
+    StudyProgram.IE: StudyProgram.KE,
+}
+
+
 def _evaluate_accreditation(
     accreditation: Accreditation,
     program: StudyProgram | None,
@@ -255,9 +263,10 @@ def _evaluate_accreditation(
     matched = True
 
     if program is not None:
-        offered_match = {program: offered[program]} if program in offered else {}
-        if program not in offered or (
-            status is not None and _base_status(offered[program]) != status
+        key = program if program in offered else _SAME_PROGRAM.get(program, program)
+        offered_match = {key: offered[key]} if key in offered else {}
+        if key not in offered or (
+            status is not None and _base_status(offered[key]) != status
         ):
             matched = False
     elif status is not None:
