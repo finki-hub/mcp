@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.14"
 resolution-markers = [
     "python_full_version >= '3.15'",
@@ -747,7 +747,7 @@ wheels = [
 
 [[package]]
 name = "posthog"
-version = "7.71.0"
+version = "7.73.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "backoff" },
@@ -755,9 +755,9 @@ dependencies = [
     { name = "requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c6/9b/12e2e82fbbf5d70f554cfd1930631a6d1cce8975721ad50b5d7b47e580ff/posthog-7.71.0.tar.gz", hash = "sha256:00950999edf7f613a90015126bacc431d3ab3964a70d91c2f792e6a0dc81f358", size = 763019, upload-time = "2026-10-16T19:24:33.765Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ec/3f/cc0d73990f90bbd790475e6040d500588068f6fe1be85b4123fec0677833/posthog-7.73.0.tar.gz", hash = "sha256:18734af7584522bc643b58df5df327871cb53781808659faa8c8138394fe876f", size = 764388, upload-time = "2026-10-19T19:20:37.265Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f5/8e/9b185e665800a922e95fb965fb9c17d2a54cee575cf5e425308250663393/posthog-7.71.0-py3-none-any.whl", hash = "sha256:52cb1320b7e178b36ef7594cf15b4a8c492c24d4d1c46700f5bee0089ba5c6ac", size = 892234, upload-time = "2026-10-16T19:24:31.706Z" },
+    { url = "https://files.pythonhosted.org/packages/53/1c/2ddbde0c08cd714c80ae0e7ef324b64eadd8e70c3a489f32d2589871d029/posthog-7.73.0-py3-none-any.whl", hash = "sha256:7954037a540d729d6120be67053c68f6fe8d2a237c277545968db9ff2e74fbe8", size = 894238, upload-time = "2026-10-19T19:20:35.099Z" },
 ]
 
 [[package]]
