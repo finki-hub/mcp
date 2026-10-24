@@ -2,7 +2,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
-from app.schemas.base import PrunedModel
+from app.schemas.base import ListPage, PrunedModel
 
 
 class StudyProgram(StrEnum):
@@ -31,6 +31,15 @@ class StudyProgram(StrEnum):
 class CourseStatus(StrEnum):
     MANDATORY = "задолжителен"
     ELECTIVE = "изборен"
+
+
+class SemesterType(StrEnum):
+    """
+    Зимски семестар = непарни семестри (1, 3, 5, 7), летен = парни (2, 4, 6, 8).
+    """
+
+    WINTER = "зимски"
+    SUMMER = "летен"
 
 
 class CourseTag(StrEnum):
@@ -209,12 +218,21 @@ class CourseParticipants(_CourseLookup):
 class AccreditationMatch(PrunedModel):
     offered_in: dict[str, str] | None = Field(
         None,
-        description="Програма → статус (за филтрираната програма или статус)",
+        description="Статус во филтрираната студиска програма",
         examples=[{"КН": "изборен"}],
+    )
+    programs: str | None = Field(
+        None,
+        description=(
+            "Програми каде предметот го има филтрираниот статус, одделени со запирка "
+            "(со евентуална напомена, на пр. „КН (4 г.)“ = само за четиригодишната "
+            "варијанта)"
+        ),
+        examples=["КН, СИИС (4 г.)"],
     )
     semester: int | None = Field(
         None,
-        description="Семестар во оваа акредитација",
+        description="Семестар во оваа акредитација (се изоставува ако е филтриран)",
         examples=[5],
     )
 
@@ -245,7 +263,20 @@ class CourseMatch(PrunedModel):
         description="Совпаднати асистенти",
         examples=[["Ана Тодоровска"]],
     )
+    participants: int | None = Field(
+        None,
+        description="Број на запишани студенти во `participants_year`",
+        examples=[42],
+    )
     accreditations: dict[str, AccreditationMatch] | None = Field(
         None,
         description="Совпаѓања по акредитација (клуч е годината на акредитацијата)",
+    )
+
+
+class CourseList(ListPage[CourseMatch]):
+    participants_year: str | None = Field(
+        None,
+        description="Академска година за која е даден бројот на запишани студенти",
+        examples=["2026/2027"],
     )

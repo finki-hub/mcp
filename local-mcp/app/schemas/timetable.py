@@ -40,8 +40,13 @@ class TimetableSummary(BaseModel):
     )
     year: int = Field(
         ...,
-        description="Академска година на распоредот.",
+        description="Академска година на распоредот (почетна година, на пр. 2025 = 2025/2026).",
         examples=[2025],
+    )
+    active: bool = Field(
+        True,
+        description="Дали распоредот е моментално објавен (не е скриен).",
+        examples=[True],
     )
 
 
