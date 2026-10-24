@@ -7,15 +7,15 @@ dependencies = [
   "beautifulsoup4>=4.15.0",
   "cyrtranslit>=1.2.0",
   "httpx>=0.28.1",
-  "ijson>=3.5.0",
-  "mcp[cli]>=2.0.0",
-  "posthog>=7.39.1",
-  "pydantic-settings>=2.15.0",
+  "ijson>=3.6.0",
+  "mcp[cli]>=2.3.0",
+  "posthog>=7.75.11",
+  "pydantic-settings>=2.16.1",
   "thefuzz>=0.22.1",
 ]
 
 [dependency-groups]
-dev = ["mypy>=2.3.0", "pytest>=9.1.1", "ruff>=0.16.3"]
+dev = ["mypy>=2.4.0", "pytest>=9.1.1", "ruff>=0.17.2"]
 
 [tool.mypy]
 python_version = "3.14"
