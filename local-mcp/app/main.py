@@ -573,7 +573,11 @@ def make_app(settings: Settings) -> MCPServer:
         min_participants: Annotated[
             int | None,
             Field(
-                description="Минимален број на запишани студенти (вклучително).",
+                description=(
+                    "Минимален број на запишани студенти (вклучително). Предметите "
+                    "со 0 запишани (не се изведуваат или немаат податоци за таа "
+                    "година) се изоставуваат освен ако е зададено 0."
+                ),
                 ge=0,
                 examples=[5],
             ),
@@ -581,7 +585,10 @@ def make_app(settings: Settings) -> MCPServer:
         max_participants: Annotated[
             int | None,
             Field(
-                description="Максимален број на запишани студенти (вклучително).",
+                description=(
+                    "Максимален број на запишани студенти (вклучително). Предметите "
+                    "со 0 запишани се изоставуваат освен ако `min_participants` е 0."
+                ),
                 ge=0,
                 examples=[15],
             ),
@@ -589,7 +596,10 @@ def make_app(settings: Settings) -> MCPServer:
         sort_by_participants: Annotated[
             bool,
             Field(
-                description="Подреди по број на запишани студенти, најмногу прво.",
+                description=(
+                    "Подреди по број на запишани студенти, најмногу прво; предметите "
+                    "со 0 запишани се на крајот."
+                ),
             ),
         ] = False,
         limit: Annotated[

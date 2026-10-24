@@ -188,3 +188,25 @@ def test_parsed_courses_are_reused_until_upstream_changes(
     list_courses()
     list_courses(query="веб")
     assert len(calls) == len(_COURSES)
+
+
+def test_max_only_filter_skips_courses_with_no_enrollment() -> None:
+    result = list_courses(max_participants=15)
+
+    assert result.participants_year == "2026/2027"
+    assert [(m.name, m.participants) for m in result.items] == [
+        ("Веб програмирање", 12),
+        ("Вовед во паметни градови", 6),
+    ]
+
+
+def test_explicit_zero_minimum_includes_courses_with_no_enrollment() -> None:
+    result = list_courses(min_participants=0, max_participants=15)
+
+    assert [m.participants for m in result.items] == [0, 12, 0, 6]
+
+
+def test_sort_ranks_courses_with_no_enrollment_last() -> None:
+    result = list_courses(sort_by_participants=True)
+
+    assert [m.participants for m in result.items] == [12, 6, 0, 0]

@@ -456,6 +456,11 @@ def list_courses(
         participants: int | None = None
         if report_participants:
             participants = course.participants.get(year, 0) if year else 0
+            # Upstream stores 0 for courses not running that year, so a range filter
+            # skips them unless the caller asks for them with min_participants=0.
+            filtered = min_participants is not None or max_participants is not None
+            if filtered and participants == 0 and min_participants != 0:
+                continue
             if min_participants is not None and participants < min_participants:
                 continue
             if max_participants is not None and participants > max_participants:
