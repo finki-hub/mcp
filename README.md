@@ -39,6 +39,7 @@ Server runs on `http://localhost:8808`
 - Get course staff/participants information
 - Fuzzy query matching support
 - Course lookup by abbreviation (Cyrillic or Latin, e.g. `АПС`, `БнП`/`БП`, `paps`); shared abbreviations return all matching courses as suggestions
+- Search FINKI announcements from finki.ukim.mk (`search_announcements`: deadlines for semester enrollment, exam registration, admission rounds, scholarships; Cyrillic or Latin keywords) and read one in full (`get_announcement`)
 
 ## License
 
