@@ -138,8 +138,14 @@ def query_terms(query: str | None) -> tuple[QueryTerm, ...]:
     return tuple(QueryTerm(word, _stem(word)) for word in dict.fromkeys(words))
 
 
+def _is_inflection(word: str, base: str) -> bool:
+    return word.startswith(base) and (
+        len(word) == len(base) or word[len(base) :] in _SUFFIXES
+    )
+
+
 def _term_weight(words: Collection[str], term: QueryTerm) -> float:
-    if any(word.startswith(term.word) for word in words):
+    if any(_is_inflection(word, term.word) for word in words):
         return 1.0
     if any(word.startswith(term.stem) for word in words):
         return _STEM_MATCH_WEIGHT
@@ -147,13 +153,24 @@ def _term_weight(words: Collection[str], term: QueryTerm) -> float:
 
 
 def _keyword_score(record: AnnouncementRecord, terms: Sequence[QueryTerm]) -> float:
-    return sum(
-        max(
-            _TITLE_WEIGHT * _term_weight(record.title_words, term),
-            _BODY_WEIGHT * _term_weight(record.body_words, term),
+    weights = [
+        (
+            _term_weight(record.title_words, term),
+            _term_weight(record.body_words, term),
         )
         for term in terms
+    ]
+    # Stems alone ("пријав" in "пријавени" for "пријавување") are too loose to
+    # carry a multi-word query: count them only next to a full-word match.
+    if len(terms) > 1 and all(max(pair) < 1.0 for pair in weights):
+        return 0.0
+    return sum(
+        max(_TITLE_WEIGHT * title, _BODY_WEIGHT * body) for title, body in weights
     )
+
+
+def _has_title_match(record: AnnouncementRecord, terms: Sequence[QueryTerm]) -> bool:
+    return any(_term_weight(record.title_words, term) == 1.0 for term in terms)
 
 
 def _recency(published: date, today: date) -> float:
@@ -261,6 +278,7 @@ def search_announcements(
 ) -> AnnouncementSearchResult:
     snapshot = get_announcement_snapshot()
     today = _today()
+    default_window = since is None
     since = since or today - DEFAULT_LOOKBACK
     records = [record for record in snapshot.records if record.published >= since]
     terms = query_terms(query)
@@ -277,6 +295,13 @@ def search_announcements(
         )
 
     ranked = _rank(records, terms, today)
+    if default_window and not any(
+        _has_title_match(item.record, terms) for item in ranked
+    ):
+        # The default window is soft: with no title match in it, an older
+        # announcement on the topic beats incidental mentions in recent ones.
+        records = list(snapshot.records)
+        ranked = _rank(records, terms, today)
     oldest = min((record.published for record in snapshot.records), default=None)
     if query and len(ranked) < limit and (oldest is None or since < oldest):
         known = {record.id for record in records}

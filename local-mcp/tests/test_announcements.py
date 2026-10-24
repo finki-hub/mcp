@@ -190,6 +190,86 @@ def test_since_filters_older_posts(monkeypatch: pytest.MonkeyPatch) -> None:
     assert [match.id for match in everything.announcements] == [21633, 17409]
 
 
+_SINGLE_PARENT = _post(
+    21726,
+    "2026-10-07",
+    "Интерен Оглас – за избор на студенти чие родителско право го врши само еден "
+    "родител, кои се стекнуваат со право на плаќање на половина од партиципацијата",
+    "<p>Пријавата со потребните документи се поднесува до 20.10.2026. Пријавените "
+    "студенти треба да имаат положени испитисо просечна оценка над 8,00.</p>",
+)
+_ADMITTED = _post(
+    21684,
+    "2026-09-29",
+    "Пријавени кандидати и решение за прием за третиот уписен рок",
+    "<p>Листа на кандидати примени на прв циклус студии.</p>",
+)
+_HACKATHON = _post(
+    21744,
+    "2026-10-17",
+    "Повик за студентски хакатон",
+    "<p>Пријавувањето на тимовите е отворено до 30.10.2026.</p>",
+)
+_OLD_EXAMS = _post(
+    17457,
+    "2025-05-21",
+    "Пријавување на испити од јунска испитна сесија",
+    "<p>Пријавувањето ќе се одвива до 03.6.2025</p>",
+)
+
+
+@pytest.mark.parametrize("query", ["пријавување испити", "prijavuvanje ispiti"])
+def test_stem_only_body_matches_do_not_rank(
+    monkeypatch: pytest.MonkeyPatch, query: str
+) -> None:
+    _use(monkeypatch, _snapshot(_SINGLE_PARENT, _ADMITTED, _HACKATHON, _EXAMS))
+
+    result = search_announcements(query=query)
+
+    assert [match.id for match in result.announcements][:1] == [21500]
+    assert 21726 not in {match.id for match in result.announcements}
+    assert 21684 not in {match.id for match in result.announcements}
+
+
+def test_default_window_reaches_older_title_match(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _use(monkeypatch, _snapshot(_SINGLE_PARENT, _HACKATHON, _OLD_EXAMS))
+
+    default = search_announcements(query="пријавување испити")
+    explicit = search_announcements(
+        query="пријавување испити",
+        since=date(2026, 5, 1),
+    )
+
+    assert [match.id for match in default.announcements] == [17457, 21744]
+    assert [match.id for match in explicit.announcements] == [21744]
+
+
+def test_title_match_in_window_keeps_default_window(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _use(monkeypatch, _snapshot(_EXAMS, _OLD_EXAMS))
+
+    result = search_announcements(query="пријавување испити")
+
+    assert [match.id for match in result.announcements] == [21500]
+
+
+def test_single_term_query_keeps_stem_matches(monkeypatch: pytest.MonkeyPatch) -> None:
+    scholarship = _post(
+        21700,
+        "2026-10-01",
+        "Конкурс за стипендија за постдипломски студии",
+        "<p>Рок за аплицирање: 15.11.2026.</p>",
+    )
+    _use(monkeypatch, _snapshot(_GRANT, scholarship))
+
+    result = search_announcements(query="стипендии")
+
+    assert [match.id for match in result.announcements] == [21700]
+
+
 def test_limit_caps_results(monkeypatch: pytest.MonkeyPatch) -> None:
     _use(monkeypatch, _snapshot(_GRANT, _ORIGINAL, _EXAMS, _EXTENSION))
 
