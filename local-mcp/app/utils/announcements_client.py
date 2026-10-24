@@ -110,39 +110,79 @@ def _load_snapshot() -> tuple[AnnouncementRecord, ...]:
 
 class AnnouncementSnapshotCache:
     def __init__(
-        self, ttl: float = _SNAPSHOT_TTL, retry_delay: float = _RETRY_DELAY
+        self,
+        ttl: float = _SNAPSHOT_TTL,
+        retry_delay: float = _RETRY_DELAY,
+        *,
+        background: bool = True,
     ) -> None:
         self._ttl = ttl
         self._retry_delay = retry_delay
+        self._background = background
         self._lock = threading.Lock()
+        self._refresh_lock = threading.Lock()
         self._records: tuple[AnnouncementRecord, ...] | None = None
         self._fetched_at = datetime.min.replace(tzinfo=UTC)
         self._timestamp = 0.0
         self._retry_after = 0.0
+        self._failed = False
 
     def get(self) -> AnnouncementSnapshot:
         with self._lock:
-            now = time.monotonic()
-            if self._records is not None and now - self._timestamp < self._ttl:
-                return AnnouncementSnapshot(
-                    self._records, self._fetched_at, stale=False
-                )
-            # Back off after a failed refresh so a slow upstream does not stall every call.
-            if now >= self._retry_after:
-                try:
-                    records = _load_snapshot()
-                except (httpx.HTTPError, ValueError) as error:
-                    self._retry_after = now + self._retry_delay
-                    logger.warning("Failed to refresh announcements: %s", error)
-                else:
-                    self._records = records
-                    self._fetched_at = datetime.now(UTC)
-                    self._timestamp = now
-                    logger.info("Refreshed announcements snapshot")
-                    return AnnouncementSnapshot(records, self._fetched_at, stale=False)
+            cached = self._records is not None
+            due = self._refresh_due()
+        if not cached:
+            return self._load_cold()
+        # Serve the cached copy right away; a slow upstream only delays the refresh.
+        if due and self._refresh_lock.acquire(blocking=False):
+            if self._background:
+                threading.Thread(target=self._refresh_and_release, daemon=True).start()
+            else:
+                self._refresh_and_release()
+        return self._snapshot()
+
+    def _refresh_due(self) -> bool:
+        now = time.monotonic()
+        return now - self._timestamp >= self._ttl and now >= self._retry_after
+
+    def _load_cold(self) -> AnnouncementSnapshot:
+        with self._refresh_lock:
+            with self._lock:
+                needs_load = self._records is None and self._refresh_due()
+            if needs_load:
+                self._refresh()
+        return self._snapshot()
+
+    def _refresh(self) -> None:
+        try:
+            records = _load_snapshot()
+        except (httpx.HTTPError, ValueError) as error:
+            logger.warning("Failed to refresh announcements: %s", error)
+            with self._lock:
+                # Back off so a failing upstream is not hit on every call.
+                self._retry_after = time.monotonic() + self._retry_delay
+                self._failed = True
+            return
+        with self._lock:
+            self._records = records
+            self._fetched_at = datetime.now(UTC)
+            self._timestamp = time.monotonic()
+            self._failed = False
+        logger.info("Refreshed announcements snapshot")
+
+    def _refresh_and_release(self) -> None:
+        try:
+            self._refresh()
+        finally:
+            self._refresh_lock.release()
+
+    def _snapshot(self) -> AnnouncementSnapshot:
+        with self._lock:
             if self._records is None:
                 raise AnnouncementsUnavailableError
-            return AnnouncementSnapshot(self._records, self._fetched_at, stale=True)
+            return AnnouncementSnapshot(
+                self._records, self._fetched_at, stale=self._failed
+            )
 
 
 _snapshot_cache = AnnouncementSnapshotCache()

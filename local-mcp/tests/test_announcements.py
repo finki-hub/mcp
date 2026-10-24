@@ -1,4 +1,6 @@
 import re
+import threading
+import time
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -231,7 +233,7 @@ def test_failed_refresh_serves_stale_snapshot(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(
         announcements_client,
         "_snapshot_cache",
-        AnnouncementSnapshotCache(ttl=0, retry_delay=0),
+        AnnouncementSnapshotCache(ttl=0, retry_delay=0, background=False),
     )
     upstream = _use(monkeypatch, _snapshot(_ORIGINAL))
     fresh = search_announcements()
@@ -243,6 +245,40 @@ def test_failed_refresh_serves_stale_snapshot(monkeypatch: pytest.MonkeyPatch) -
     assert stale.stale is True
     assert stale.fetched_at == fresh.fetched_at
     assert [match.id for match in stale.announcements] == [21633]
+
+
+def test_expired_snapshot_is_served_while_refreshing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        announcements_client,
+        "_snapshot_cache",
+        AnnouncementSnapshotCache(ttl=0, retry_delay=0),
+    )
+    _use(monkeypatch, _snapshot(_ORIGINAL))
+    search_announcements()
+
+    release = threading.Event()
+    newer = _snapshot(_ORIGINAL, _EXTENSION)
+
+    def slow_upstream(url: str, params: dict[str, str | int]) -> object:
+        release.wait(timeout=5)
+        return newer(url, params)
+
+    monkeypatch.setattr(announcements_client, "_get_json", slow_upstream)
+
+    started = time.monotonic()
+    while_refreshing = search_announcements()
+    elapsed = time.monotonic() - started
+    release.set()
+    deadline = time.monotonic() + 5
+    while len(search_announcements().announcements) < 2:
+        assert time.monotonic() < deadline
+        time.sleep(0.01)
+
+    assert elapsed < 1
+    assert [match.id for match in while_refreshing.announcements] == [21633]
+    assert while_refreshing.stale is False
 
 
 def test_cold_failure_raises_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
