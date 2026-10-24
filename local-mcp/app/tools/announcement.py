@@ -144,8 +144,12 @@ def _is_inflection(word: str, base: str) -> bool:
     )
 
 
+def _has_full_match(words: Collection[str], term: QueryTerm) -> bool:
+    return any(_is_inflection(word, term.word) for word in words)
+
+
 def _term_weight(words: Collection[str], term: QueryTerm) -> float:
-    if any(_is_inflection(word, term.word) for word in words):
+    if _has_full_match(words, term):
         return 1.0
     if any(word.startswith(term.stem) for word in words):
         return _STEM_MATCH_WEIGHT
@@ -170,7 +174,7 @@ def _keyword_score(record: AnnouncementRecord, terms: Sequence[QueryTerm]) -> fl
 
 
 def _has_title_match(record: AnnouncementRecord, terms: Sequence[QueryTerm]) -> bool:
-    return any(_term_weight(record.title_words, term) == 1.0 for term in terms)
+    return any(_has_full_match(record.title_words, term) for term in terms)
 
 
 def _recency(published: date, today: date) -> float:
