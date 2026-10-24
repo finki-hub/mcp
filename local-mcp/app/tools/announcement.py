@@ -173,10 +173,6 @@ def _keyword_score(record: AnnouncementRecord, terms: Sequence[QueryTerm]) -> fl
     )
 
 
-def _has_title_match(record: AnnouncementRecord, terms: Sequence[QueryTerm]) -> bool:
-    return any(_has_full_match(record.title_words, term) for term in terms)
-
-
 def _recency(published: date, today: date) -> float:
     age_days = max((today - published).days, 0)
     decay = 0.5 ** (age_days / _HALF_LIFE_DAYS)
@@ -282,7 +278,6 @@ def search_announcements(
 ) -> AnnouncementSearchResult:
     snapshot = get_announcement_snapshot()
     today = _today()
-    default_window = since is None
     since = since or today - DEFAULT_LOOKBACK
     records = [record for record in snapshot.records if record.published >= since]
     terms = query_terms(query)
@@ -299,13 +294,6 @@ def search_announcements(
         )
 
     ranked = _rank(records, terms, today)
-    if default_window and not any(
-        _has_title_match(item.record, terms) for item in ranked
-    ):
-        # The default window is soft: with no title match in it, an older
-        # announcement on the topic beats incidental mentions in recent ones.
-        records = list(snapshot.records)
-        ranked = _rank(records, terms, today)
     oldest = min((record.published for record in snapshot.records), default=None)
     if query and len(ranked) < limit and (oldest is None or since < oldest):
         known = {record.id for record in records}
