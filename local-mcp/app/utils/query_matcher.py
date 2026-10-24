@@ -1,3 +1,4 @@
+import re
 from typing import TypedDict
 
 import cyrtranslit  # type: ignore[import-untyped]
@@ -17,6 +18,13 @@ def transliterate_and_normalize(text: str) -> str:
         return cyrtranslit.to_cyrillic(text, "mk").casefold().strip()
     except Exception:
         return text.casefold().strip()
+
+
+_WORD_PATTERN = re.compile(r"\w+")
+
+
+def normalized_words(text: str) -> list[str]:
+    return _WORD_PATTERN.findall(transliterate_and_normalize(text))
 
 
 def match_query_to_group(

@@ -1,5 +1,6 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import date
 from typing import Annotated
 
 import anyio
@@ -9,6 +10,7 @@ from pydantic import Field
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
+from app.schemas.announcement import AnnouncementDetail, AnnouncementSearchResult
 from app.schemas.anto import AntoQuote
 from app.schemas.course import (
     AccreditationYear,
@@ -36,6 +38,7 @@ from app.schemas.timetable import (
     TimetableLessonType,
     TimetableSummary,
 )
+from app.tools.announcement import get_announcement, search_announcements
 from app.tools.anto import get_random_anto_quote
 from app.tools.course import (
     get_course_data,
@@ -824,6 +827,87 @@ def make_app(settings: Settings) -> MCPServer:
         ],
     ) -> MasterResult:
         return await anyio.to_thread.run_sync(get_master, student)
+
+    @mcp.tool(
+        name="search_announcements",
+        description=(
+            "Ги враќа најновите огласи од огласната табла на ФИНКИ (finki.ukim.mk): "
+            "рокови за упис и заверка на семестар, пријавување испити, уписни рокови, "
+            "конкурси, стипендии, промени во работно време. Користи ја за прашања за "
+            "тековни рокови и датуми. Секој резултат содржи наслов, датум, линк и "
+            "извадок; за целиот текст користи get_announcement."
+        ),
+        annotations=ToolAnnotations(
+            title="Пребарување огласи од ФИНКИ",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("search_announcements")
+    async def search_announcements_tool(
+        query: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "Клучни зборови на македонски, со кирилица или латиница. Без "
+                    "барање се враќаат најновите огласи."
+                ),
+                max_length=256,
+                examples=["упис семестар", "пријава испити", "upis semestar"],
+            ),
+        ] = None,
+        since: Annotated[
+            date | None,
+            Field(
+                description=(
+                    "Најстар датум на објавување (YYYY-MM-DD). Стандардно 180 дена "
+                    "пред денешниот датум."
+                ),
+                examples=["2026-09-01"],
+            ),
+        ] = None,
+        limit: Annotated[
+            int,
+            Field(
+                description="Максимален број на огласи.",
+                ge=1,
+                le=10,
+                examples=[5],
+            ),
+        ] = 5,
+    ) -> AnnouncementSearchResult:
+        return await anyio.to_thread.run_sync(
+            lambda: search_announcements(query=query, since=since, limit=limit),
+        )
+
+    @mcp.tool(
+        name="get_announcement",
+        description=(
+            "Го враќа целиот текст на оглас од огласната табла на ФИНКИ по ID "
+            "(добиено од search_announcements), заедно со наслов, датум и линк."
+        ),
+        annotations=ToolAnnotations(
+            title="Текст на оглас од ФИНКИ",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("get_announcement")
+    async def get_announcement_tool(
+        id: Annotated[
+            int,
+            Field(
+                description="ID на огласот.",
+                ge=1,
+                examples=[21653],
+            ),
+        ],
+    ) -> AnnouncementDetail:
+        return await anyio.to_thread.run_sync(get_announcement, id)
 
     return mcp
 

@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     DIPLOMAS_API_URL: str = "https://bachelors-api.finki-hub.com/diplomas"
     MASTERS_API_URL: str = "https://masters-api.finki-hub.com/masters"
     TIMETABLES_API_URL: str = "https://timetables-api.finki-hub.com"
+    FINKI_ANNOUNCEMENTS_API_URL: str = (
+        "https://finki.ukim.mk/wp-json/wp/v2/announcement"
+    )
     CHAT_BOT_API_URL: str = "http://api:8880"
 
     POSTHOG_KEY: str = ""
