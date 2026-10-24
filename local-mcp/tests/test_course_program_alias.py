@@ -26,7 +26,7 @@ def _courses(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_ke_and_ie_filters_match_the_renamed_program_in_both_accreditations(
     program: StudyProgram,
 ) -> None:
-    (match,) = list_courses(program=program)
+    (match,) = list_courses(program=program).items
 
     assert match.accreditations is not None
     assert match.accreditations["2023"].offered_in == {"ИЕ": "задолжителен (сем. 8)"}
@@ -34,7 +34,7 @@ def test_ke_and_ie_filters_match_the_renamed_program_in_both_accreditations(
 
 
 def test_other_programs_do_not_alias() -> None:
-    (match,) = list_courses(program=StudyProgram.KN)
+    (match,) = list_courses(program=StudyProgram.KN).items
 
     assert match.accreditations is not None
     assert set(match.accreditations) == {"2023"}

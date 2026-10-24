@@ -36,6 +36,8 @@ Server runs on `http://localhost:8808`
 ## Tools
 
 - Get available courses (staff/participants)
+- Filter courses by program, semester or winter/summer term, name or abbreviation, and enrolled-student range in one call; list outputs are compact, paginated (`limit`/`offset`) and flag truncation
+- List FINKI study programs for all three cycles (`list_study_programs`: names, duration, accreditation, language of instruction where officially confirmed)
 - Get course staff/participants information
 - Fuzzy query matching support
 - Course lookup by abbreviation (Cyrillic or Latin, e.g. `АПС`, `БнП`/`БП`, `paps`); shared abbreviations return all matching courses as suggestions

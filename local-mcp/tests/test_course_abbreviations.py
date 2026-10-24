@@ -135,5 +135,5 @@ def test_full_name_still_matches() -> None:
 
 
 def test_list_courses_includes_abbreviation() -> None:
-    by_name = {match.name: match.abbreviation for match in list_courses()}
+    by_name = {match.name: match.abbreviation for match in list_courses().items}
     assert by_name["Бази на податоци"] == "БнП"
