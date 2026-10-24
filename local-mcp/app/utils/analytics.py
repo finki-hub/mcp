@@ -3,7 +3,6 @@ import logging
 import time
 import traceback
 from collections.abc import Awaitable, Callable
-from typing import ParamSpec, TypeVar
 
 from posthog import Posthog
 
@@ -13,9 +12,6 @@ logger = logging.getLogger(__name__)
 
 _SERVICE = "local-mcp"
 _DISTINCT_ID = "local-mcp-server"
-
-P = ParamSpec("P")
-R = TypeVar("R")
 
 
 class _AnalyticsState:
@@ -146,7 +142,7 @@ def _arg_metadata(
     return metadata
 
 
-def track_tool(
+def track_tool[**P, R](
     tool: str,
 ) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
     def decorator(func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:

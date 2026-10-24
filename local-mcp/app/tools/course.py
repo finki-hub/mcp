@@ -46,22 +46,28 @@ def _split_tags(value: str | None) -> list[str]:
     return [CourseTag.from_upstream(tag) or tag for tag in tags if tag]
 
 
-def _build_course(record: dict) -> CourseData:
-    professors_raw = record.get("professors") or ""
+def _set_accreditation_field(
+    accreditation: Accreditation,
+    field: str,
+    value: object,
+) -> None:
+    if field == "available":
+        accreditation.available = str(value).upper() == "TRUE"
+    elif field in {"credits", "level", "semester"}:
+        setattr(accreditation, field, _to_int(value))
+    elif field == "prerequisite":
+        setattr(accreditation, field, value or None)
+    elif field in {"name", "code"}:
+        setattr(accreditation, field, value)
 
-    participants: dict[str, int] = {}
+
+def _build_accreditations(record: dict) -> dict[str, Accreditation]:
     accreditations: dict[str, Accreditation] = {}
     offered: dict[str, dict[str, str]] = {}
-
     for key, value in record.items():
-        if _PARTICIPANTS_YEAR_RE.match(key):
-            participants[key] = _to_int(value)
-            continue
-
         field_match = _ACCREDITATION_FIELD_RE.match(key)
         if not field_match:
             continue
-
         version, field = field_match.group(1), field_match.group(2)
         accreditation = accreditations.setdefault(
             version,
@@ -74,23 +80,21 @@ def _build_course(record: dict) -> CourseData:
             program = StudyProgram.from_upstream(field.removeprefix("state-"))
             if program and value and value != _NOT_OFFERED:
                 offered.setdefault(version, {})[program] = value
-        elif field == "available":
-            accreditation.available = str(value).upper() == "TRUE"
-        elif field == "credits":
-            accreditation.credits = _to_int(value)
-        elif field == "level":
-            accreditation.level = _to_int(value)
-        elif field == "semester":
-            accreditation.semester = _to_int(value)
-        elif field == "prerequisite":
-            accreditation.prerequisite = value or None
-        elif field == "name":
-            accreditation.name = value
-        elif field == "code":
-            accreditation.code = value
+        else:
+            _set_accreditation_field(accreditation, field, value)
 
     for version, programs in offered.items():
         accreditations[version].offered_in = programs
+    return accreditations
+
+
+def _build_course(record: dict) -> CourseData:
+    professors_raw = record.get("professors") or ""
+    participants = {
+        key: _to_int(value)
+        for key, value in record.items()
+        if _PARTICIPANTS_YEAR_RE.match(key)
+    }
 
     return CourseData(
         name=record.get("name", ""),
@@ -103,7 +107,7 @@ def _build_course(record: dict) -> CourseData:
             inactive=professors_raw.strip() == _INACTIVE_MARKER,
         ),
         participants=participants,
-        accreditations=accreditations,
+        accreditations=_build_accreditations(record),
     )
 
 
@@ -251,15 +255,12 @@ _SAME_PROGRAM: dict[str, str] = {
 }
 
 
-def _evaluate_accreditation(
-    accreditation: Accreditation,
+def _evaluate_offering(
+    offered: dict[str, str],
     program: StudyProgram | None,
     status: CourseStatus | None,
-    semester: int | None,
-) -> tuple[AccreditationMatch, bool]:
-    offered = accreditation.offered_in or {}
+) -> tuple[dict[str, str] | None, bool]:
     offered_match: dict[str, str] | None = None
-    semester_value: int | None = None
     matched = True
 
     if program is not None:
@@ -274,10 +275,23 @@ def _evaluate_accreditation(
         if not offered_match:
             matched = False
 
-    if semester is not None:
-        semester_value = accreditation.semester
-        if accreditation.semester != semester:
-            matched = False
+    return offered_match, matched
+
+
+def _evaluate_accreditation(
+    accreditation: Accreditation,
+    program: StudyProgram | None,
+    status: CourseStatus | None,
+    semester: int | None,
+) -> tuple[AccreditationMatch, bool]:
+    offered_match, matched = _evaluate_offering(
+        accreditation.offered_in or {},
+        program,
+        status,
+    )
+    semester_value = accreditation.semester if semester is not None else None
+    if semester is not None and accreditation.semester != semester:
+        matched = False
 
     return AccreditationMatch(
         offered_in=offered_match,
@@ -295,6 +309,88 @@ def _resolve_staff_groups(names: list[str], pool: list[str]) -> list[list[str]] 
     return groups
 
 
+class _StaffFilter(NamedTuple):
+    groups: list[list[str]] | None
+    candidates: set[str]
+
+
+def _staff_filter(
+    names: list[str] | None,
+    courses: list[CourseData],
+    role: str,
+) -> _StaffFilter:
+    if not names:
+        return _StaffFilter(None, set())
+    pool = sorted({n for c in courses for n in getattr(c.staff, role)})
+    groups = _resolve_staff_groups(names, pool)
+    return _StaffFilter(groups, {m for group in (groups or []) for m in group})
+
+
+def _matches_staff(people: list[str], staff_filter: _StaffFilter) -> bool:
+    return staff_filter.groups is None or all(
+        any(person in people for person in group) for group in staff_filter.groups
+    )
+
+
+def _matching_accreditations(
+    course: CourseData,
+    program: StudyProgram | None,
+    status: CourseStatus | None,
+    semester: int | None,
+    accreditation: AccreditationYear | None,
+) -> dict[str, AccreditationMatch]:
+    entries: dict[str, AccreditationMatch] = {}
+    for year, acc in (course.accreditations or {}).items():
+        if not acc.available:
+            continue
+        if accreditation is not None and year != accreditation:
+            continue
+        entry, matched = _evaluate_accreditation(acc, program, status, semester)
+        if matched:
+            entries[year] = entry
+    return entries
+
+
+def _matches_course_filters(
+    course: CourseData,
+    tags: list[CourseTag] | None,
+    professors: _StaffFilter,
+    assistants: _StaffFilter,
+) -> bool:
+    if tags is not None and not all(tag in (course.tags or []) for tag in tags):
+        return False
+    return _matches_staff(course.staff.professors, professors) and _matches_staff(
+        course.staff.assistants,
+        assistants,
+    )
+
+
+def _course_match(
+    course: CourseData,
+    tags: list[CourseTag] | None,
+    professors: _StaffFilter,
+    assistants: _StaffFilter,
+    accreditations: dict[str, AccreditationMatch] | None,
+) -> CourseMatch:
+    return CourseMatch(
+        name=course.name,
+        abbreviation=course.abbreviation,
+        tags=course.tags if tags is not None else None,
+        professors=[p for p in course.staff.professors if p in professors.candidates]
+        or None,
+        assistants=[a for a in course.staff.assistants if a in assistants.candidates]
+        or None,
+        accreditations=accreditations,
+    )
+
+
+def _reported_accreditations(
+    entries: dict[str, AccreditationMatch],
+    report: bool,
+) -> dict[str, AccreditationMatch] | None:
+    return entries if report else None
+
+
 def list_courses(
     *,
     program: StudyProgram | None = None,
@@ -307,23 +403,12 @@ def list_courses(
 ) -> list[CourseMatch]:
     courses = [_build_course(record) for record in get_courses()]
 
-    professor_groups: list[list[str]] | None = None
-    professor_candidates: set[str] = set()
-    if professors:
-        pool = sorted({n for c in courses for n in c.staff.professors})
-        professor_groups = _resolve_staff_groups(professors, pool)
-        if professor_groups is None:
-            return []
-        professor_candidates = {m for group in professor_groups for m in group}
-
-    assistant_groups: list[list[str]] | None = None
-    assistant_candidates: set[str] = set()
-    if assistants:
-        pool = sorted({n for c in courses for n in c.staff.assistants})
-        assistant_groups = _resolve_staff_groups(assistants, pool)
-        if assistant_groups is None:
-            return []
-        assistant_candidates = {m for group in assistant_groups for m in group}
+    professor_filter = _staff_filter(professors, courses, "professors")
+    if professors and professor_filter.groups is None:
+        return []
+    assistant_filter = _staff_filter(assistants, courses, "assistants")
+    if assistants and assistant_filter.groups is None:
+        return []
 
     report_accreditations = (
         program is not None or status is not None or semester is not None
@@ -332,51 +417,29 @@ def list_courses(
 
     matches: list[CourseMatch] = []
     for course in courses:
-        course_tags = course.tags or []
-        if tags is not None and not all(t in course_tags for t in tags):
-            continue
-
-        course_professors = course.staff.professors
-        if professor_groups is not None and not all(
-            any(m in course_professors for m in group) for group in professor_groups
-        ):
-            continue
-
-        course_assistants = course.staff.assistants
-        if assistant_groups is not None and not all(
-            any(m in course_assistants for m in group) for group in assistant_groups
+        if not _matches_course_filters(
+            course, tags, professor_filter, assistant_filter
         ):
             continue
 
         accreditations: dict[str, AccreditationMatch] | None = None
         if scopes_accreditations:
-            matched_entries: dict[str, AccreditationMatch] = {}
-            any_match = False
-            for year, acc in (course.accreditations or {}).items():
-                if not acc.available:
-                    continue
-                if accreditation is not None and year != accreditation:
-                    continue
-                entry, matched = _evaluate_accreditation(acc, program, status, semester)
-                if not matched:
-                    continue
-                any_match = True
-                if report_accreditations:
-                    matched_entries[year] = entry
-            if not any_match:
+            matched_entries = _matching_accreditations(
+                course,
+                program,
+                status,
+                semester,
+                accreditation,
+            )
+            if not matched_entries:
                 continue
-            accreditations = matched_entries or None
+            accreditations = _reported_accreditations(
+                matched_entries, report_accreditations
+            )
 
         matches.append(
-            CourseMatch(
-                name=course.name,
-                abbreviation=course.abbreviation,
-                tags=course.tags if tags is not None else None,
-                professors=[p for p in course_professors if p in professor_candidates]
-                or None,
-                assistants=[a for a in course_assistants if a in assistant_candidates]
-                or None,
-                accreditations=accreditations,
+            _course_match(
+                course, tags, professor_filter, assistant_filter, accreditations
             ),
         )
 

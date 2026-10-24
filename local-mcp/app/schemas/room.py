@@ -4,12 +4,17 @@ from pydantic import BaseModel, Field
 
 from app.schemas.base import PrunedModel
 
+_AMPHITHEATER = "Амфитеатар"
+_CABINET = "Кабинет"
+_FEIT_ANNEX = "Анекс на ФЕИТ"
+_ROOM_NAME_DESCRIPTION = "Име на просторијата"
+
 
 class RoomType(StrEnum):
     PVC_BOX = "PVC Кутија"
-    AMPHITHEATER = "Амфитеатар"
+    AMPHITHEATER = _AMPHITHEATER
     DEANERY = "Деканат"
-    CABINET = "Кабинет"
+    CABINET = _CABINET
     OFFICE = "Канцеларија"
     LABORATORY = "Лабораторија"
     LECTURE_HALL = "Предавална"
@@ -18,7 +23,7 @@ class RoomType(StrEnum):
 
 class RoomLocation(StrEnum):
     MF_ANNEX = "Анекс на МФ"
-    FEIT_ANNEX = "Анекс на ФЕИТ"
+    FEIT_ANNEX = _FEIT_ANNEX
     BARRACKS = "Бараки"
     MF = "МФ"
     PF = "ПФ"
@@ -30,36 +35,36 @@ class RoomLocation(StrEnum):
 class RoomMatch(PrunedModel):
     name: str = Field(
         ...,
-        description="Име на просторијата",
+        description=_ROOM_NAME_DESCRIPTION,
         examples=["Ф10"],
     )
     type: str | None = Field(
         None,
         description="Тип на просторијата",
-        examples=["Кабинет"],
+        examples=[_CABINET],
     )
     location: str | None = Field(
         None,
         description="Локација на просторијата",
-        examples=["Анекс на ФЕИТ"],
+        examples=[_FEIT_ANNEX],
     )
 
 
 class Room(BaseModel):
     name: str = Field(
         ...,
-        description="Име на просторијата",
+        description=_ROOM_NAME_DESCRIPTION,
         examples=["Ф10"],
     )
     type: str | None = Field(
         None,
         description="Тип на просторијата",
-        examples=["Кабинет"],
+        examples=[_CABINET],
     )
     location: str | None = Field(
         None,
         description="Локација на просторијата",
-        examples=["Анекс на ФЕИТ"],
+        examples=[_FEIT_ANNEX],
     )
     description: str | None = Field(
         None,
@@ -86,8 +91,8 @@ class Room(BaseModel):
 class RoomData(PrunedModel):
     name: str = Field(
         ...,
-        description="Име на просторијата",
-        examples=["Амфитеатар"],
+        description=_ROOM_NAME_DESCRIPTION,
+        examples=[_AMPHITHEATER],
     )
     rooms: list[Room] | None = Field(
         None,
@@ -101,7 +106,7 @@ class RoomData(PrunedModel):
     suggestions: list[str] | None = Field(
         None,
         description="Предложени простории ако нема точно совпаѓање",
-        examples=[["Амфитеатар", "Мал Амфитеатар", "Голем Амфитеатар"]],
+        examples=[[_AMPHITHEATER, "Мал Амфитеатар", "Голем Амфитеатар"]],
     )
     match_info: dict | None = Field(
         None,

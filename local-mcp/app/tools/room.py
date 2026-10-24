@@ -244,28 +244,36 @@ def _lookup_room(name: str) -> _Lookup:
     )
 
 
+def _matches_room_filters(
+    record: dict,
+    type: RoomType | None,
+    location: RoomLocation | None,
+    floor: str | None,
+    min_capacity: int | None,
+) -> bool:
+    if type is not None and _clean(record.get("type")) != type:
+        return False
+    if location is not None and _clean(record.get("location")) != location:
+        return False
+    if floor is not None and (_clean(record.get("floor")) or "") != floor.strip():
+        return False
+    if min_capacity is None:
+        return True
+    capacity = _to_int(record.get("capacity"))
+    return capacity is not None and capacity >= min_capacity
+
+
 def list_rooms(
     type: RoomType | None = None,
     location: RoomLocation | None = None,
     floor: str | None = None,
     min_capacity: int | None = None,
 ) -> list[RoomMatch]:
-    matches: list[RoomMatch] = []
-    for record in get_rooms():
-        if type is not None and _clean(record.get("type")) != type:
-            continue
-        if location is not None and _clean(record.get("location")) != location:
-            continue
-        if floor is not None and (_clean(record.get("floor")) or "") != floor.strip():
-            continue
-        if min_capacity is not None:
-            capacity = _to_int(record.get("capacity"))
-            if capacity is None or capacity < min_capacity:
-                continue
-
-        matches.append(_build_room_match(record))
-
-    return matches
+    return [
+        _build_room_match(record)
+        for record in get_rooms()
+        if _matches_room_filters(record, type, location, floor, min_capacity)
+    ]
 
 
 def get_room_data(name: str) -> RoomData:
