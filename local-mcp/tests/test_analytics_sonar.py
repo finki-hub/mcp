@@ -56,8 +56,9 @@ def test_track_tool_reraises_original_exception(
     async def failing() -> None:
         raise error
 
+    result = _await_result(failing())
     with pytest.raises(ValueError, match="failure") as caught:
-        asyncio.run(_await_result(failing()))
+        asyncio.run(result)
     assert caught.value is error
     capture_error.assert_called_once_with(error, properties={"tool": "failure"})
     capture.assert_called_once_with(
