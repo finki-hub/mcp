@@ -3,8 +3,10 @@ from typing import NamedTuple
 
 from thefuzz import fuzz  # type: ignore[import-untyped]
 
+from app.schemas.base import ListPage
 from app.schemas.room import Room, RoomData, RoomLocation, RoomMatch, RoomType
 from app.utils.http_client import get_rooms
+from app.utils.pagination import paginate
 from app.utils.query_matcher import transliterate_and_normalize
 
 _ROOM_FUZZY_THRESHOLD = 88
@@ -12,6 +14,7 @@ _SHORT_ROOM_FUZZY_THRESHOLD = 92
 _ROOM_AMBIGUITY_MARGIN = 2
 _ROOM_SUGGESTION_FLOOR = 70
 _MIN_FUZZY_QUERY_LENGTH = 2
+DEFAULT_ROOM_LIMIT = 50
 
 _SEPARATORS_RE = re.compile(r"[\s._-]+")
 _DIGIT_RE = re.compile(r"\d")
@@ -263,17 +266,31 @@ def _matches_room_filters(
     return capacity is not None and capacity >= min_capacity
 
 
+def _name_contains(name: str, query_variants: set[str]) -> bool:
+    if not query_variants:
+        return True
+    name_variants = _compact_variants(name)
+    return any(q in n for q in query_variants for n in name_variants)
+
+
 def list_rooms(
     type: RoomType | None = None,
     location: RoomLocation | None = None,
     floor: str | None = None,
     min_capacity: int | None = None,
-) -> list[RoomMatch]:
-    return [
+    *,
+    query: str | None = None,
+    limit: int = DEFAULT_ROOM_LIMIT,
+    offset: int = 0,
+) -> ListPage[RoomMatch]:
+    query_variants = _compact_variants(query) if query else set()
+    matches = [
         _build_room_match(record)
         for record in get_rooms()
-        if _matches_room_filters(record, type, location, floor, min_capacity)
+        if _name_contains(_clean(record.get("name")) or "", query_variants)
+        and _matches_room_filters(record, type, location, floor, min_capacity)
     ]
+    return paginate(matches, limit=limit, offset=offset)
 
 
 def get_room_data(name: str) -> RoomData:

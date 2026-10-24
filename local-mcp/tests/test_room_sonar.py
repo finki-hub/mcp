@@ -30,7 +30,7 @@ def test_room_filters(monkeypatch: pytest.MonkeyPatch) -> None:
         {"name": "empty"},
     ]
     monkeypatch.setattr(room, "get_rooms", lambda: records)
-    assert [match.name for match in room.list_rooms()] == [
+    assert [match.name for match in room.list_rooms().items] == [
         "first",
         "second",
         "third",
@@ -43,17 +43,22 @@ def test_room_filters(monkeypatch: pytest.MonkeyPatch) -> None:
             location=RoomLocation.MF,
             floor=" 1 ",
             min_capacity=40,
-        )
+        ).items
     ] == ["first"]
-    assert room.list_rooms(min_capacity=41) == []
-    assert [match.name for match in room.list_rooms(min_capacity=0)] == [
+    assert room.list_rooms(min_capacity=41).items == []
+    assert [match.name for match in room.list_rooms(min_capacity=0).items] == [
         "first",
         "third",
     ]
-    assert [match.name for match in room.list_rooms(floor=" ")] == ["third", "empty"]
-    assert [match.name for match in room.list_rooms(type=RoomType.CABINET)] == ["third"]
-    assert [match.name for match in room.list_rooms(location=RoomLocation.FEIT)] == [
+    assert [match.name for match in room.list_rooms(floor=" ").items] == [
+        "third",
+        "empty",
+    ]
+    assert [match.name for match in room.list_rooms(type=RoomType.CABINET).items] == [
         "third"
     ]
+    assert [
+        match.name for match in room.list_rooms(location=RoomLocation.FEIT).items
+    ] == ["third"]
     monkeypatch.setattr(room, "get_rooms", list)
-    assert room.list_rooms() == []
+    assert room.list_rooms().items == []

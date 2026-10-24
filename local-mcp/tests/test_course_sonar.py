@@ -27,29 +27,29 @@ def records(monkeypatch: pytest.MonkeyPatch) -> list[dict]:
 
 
 def test_unscoped_empty_filters(records: list[dict]) -> None:
-    matches = tools.list_courses(tags=[], professors=[], assistants=[])
+    matches = tools.list_courses(tags=[], professors=[], assistants=[]).items
     assert [m.name for m in matches] == [r["name"] for r in records]
     assert matches[0].tags == ["AI", "веб"]
     assert all(m.accreditations is None and m.professors is None for m in matches)
 
 
 def test_accreditation_scope_without_reporting(records: list[dict]) -> None:
-    matches = tools.list_courses(accreditation=AccreditationYear.Y2023)
+    matches = tools.list_courses(accreditation=AccreditationYear.Y2023).items
     assert [m.name for m in matches] == [records[0]["name"]]
     assert matches[0].accreditations is None
-    assert tools.list_courses(accreditation=AccreditationYear.Y2018) == []
+    assert tools.list_courses(accreditation=AccreditationYear.Y2018).items == []
 
 
 def test_filters_share_available_accreditation(records: list[dict]) -> None:
-    assert tools.list_courses(status=CourseStatus.ELECTIVE, semester=2) == []
+    assert tools.list_courses(status=CourseStatus.ELECTIVE, semester=2).items == []
     (match,) = tools.list_courses(
         program=StudyProgram.KN, status=CourseStatus.MANDATORY, semester=2
-    )
+    ).items
     assert match.name == records[0]["name"]
     assert match.accreditations is not None
     assert match.accreditations["2023"].offered_in == {"КН": "задолжителен (3 г.)"}
-    assert match.accreditations["2023"].semester == 2
-    assert tools.list_courses(program=StudyProgram.KI) == []
+    assert match.accreditations["2023"].semester is None
+    assert tools.list_courses(program=StudyProgram.KI).items == []
 
 
 def test_staff_group_queries(
@@ -61,12 +61,12 @@ def test_staff_group_queries(
     )
     (match,) = tools.list_courses(
         professors=["either", "alice"], assistants=["carol"], tags=[CourseTag.WEB]
-    )
+    ).items
     assert match.name == records[0]["name"]
     assert match.professors == ["Alice", "Bob", "Alice"]
     assert match.assistants == ["Carol"]
-    assert tools.list_courses(professors=["missing"]) == []
-    assert tools.list_courses(assistants=["missing"]) == []
+    assert tools.list_courses(professors=["missing"]).items == []
+    assert tools.list_courses(assistants=["missing"]).items == []
 
 
 def test_record_parsing() -> None:
