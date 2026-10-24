@@ -1,3 +1,4 @@
+from app.schemas.base import ListPage
 from app.schemas.timetable import (
     TimetableDay,
     TimetableEntity,
@@ -7,6 +8,11 @@ from app.schemas.timetable import (
     TimetableSummary,
 )
 from app.utils.http_client import get_timetable_detail, get_timetables
+from app.utils.pagination import paginate
+from app.utils.query_matcher import transliterate_and_normalize
+
+DEFAULT_TIMETABLE_LIMIT = 10
+DEFAULT_ENTITY_LIMIT = 100
 
 _LESSON_TOKENS = {"п", "ав", "лаб"}
 _LESSON_TYPE_TOKENS = {
@@ -112,6 +118,7 @@ def _build_summary(record: dict) -> TimetableSummary:
         title=_clean(record.get("title")) or "",
         date_from=_clean(record.get("dateFrom")) or "",
         year=_to_int(record.get("year")),
+        active=not record.get("hidden"),
     )
 
 
@@ -212,12 +219,42 @@ def _contains_entity_id(card: dict, key: str, entity_id: str | None) -> bool:
     )
 
 
-def list_timetables() -> list[TimetableSummary]:
-    return [_build_summary(record) for record in get_timetables()]
+def _filter_by_query(
+    entities: list[TimetableEntity],
+    query: str | None,
+) -> list[TimetableEntity]:
+    normalized_query = transliterate_and_normalize(query) if query else ""
+    if not normalized_query:
+        return entities
+    return [
+        entity
+        for entity in entities
+        if normalized_query in transliterate_and_normalize(entity.name)
+    ]
 
 
-def list_timetable_groups(id: str | None = None) -> list[TimetableEntity]:
-    return _entities(_get_timetable(id), "classes")
+def list_timetables(
+    *,
+    academic_year: int | None = None,
+    limit: int = DEFAULT_TIMETABLE_LIMIT,
+    offset: int = 0,
+) -> ListPage[TimetableSummary]:
+    summaries = [_build_summary(record) for record in get_timetables()]
+    if academic_year is not None:
+        summaries = [summary for summary in summaries if summary.year == academic_year]
+    summaries.sort(key=lambda summary: summary.date_from, reverse=True)
+    return paginate(summaries, limit=limit, offset=offset)
+
+
+def list_timetable_groups(
+    id: str | None = None,
+    *,
+    query: str | None = None,
+    limit: int = DEFAULT_ENTITY_LIMIT,
+    offset: int = 0,
+) -> ListPage[TimetableEntity]:
+    groups = _filter_by_query(_entities(_get_timetable(id), "classes"), query)
+    return paginate(groups, limit=limit, offset=offset)
 
 
 def list_timetable_professors(id: str | None = None) -> list[TimetableEntity]:
@@ -228,8 +265,31 @@ def list_timetable_rooms(id: str | None = None) -> list[TimetableEntity]:
     return _entities(_get_timetable(id), "classrooms")
 
 
-def list_timetable_courses(id: str | None = None) -> list[TimetableEntity]:
-    return _entities(_get_timetable(id), "subjects", strip_lesson_type=True)
+def list_timetable_courses(
+    id: str | None = None,
+    *,
+    query: str | None = None,
+    limit: int = DEFAULT_ENTITY_LIMIT,
+    offset: int = 0,
+) -> ListPage[TimetableEntity]:
+    # Lectures and exercises of one course are separate upstream subjects with the
+    # same name once the lesson type is stripped; list each course once.
+    unique: dict[str, TimetableEntity] = {}
+    for entity in _entities(_get_timetable(id), "subjects", strip_lesson_type=True):
+        unique.setdefault(entity.name, entity)
+    courses = _filter_by_query(list(unique.values()), query)
+    return paginate(courses, limit=limit, offset=offset)
+
+
+def _same_course_ids(detail: dict, course_id: str) -> set[str]:
+    names = {
+        _clean(subject.get("id")) or "": _course_name(subject.get("name"))
+        for subject in detail.get("subjects", [])
+    }
+    name = names.get(course_id)
+    if name is None:
+        return {course_id}
+    return {subject_id for subject_id, other in names.items() if other == name}
 
 
 def _matches_time_bounds(
@@ -251,12 +311,12 @@ def _matches_time_bounds(
 def _matches_entry_filters(
     card: dict,
     entity_ids: dict[str, str | None],
-    course_id: str | None,
+    course_ids: set[str] | None,
     day: TimetableDay | None,
     lesson_type: TimetableLessonType | None,
 ) -> bool:
     subject = card.get("subject") or {}
-    if course_id is not None and _clean(subject.get("id")) != course_id:
+    if course_ids is not None and _clean(subject.get("id")) not in course_ids:
         return False
     if not all(
         _contains_entity_id(card, key, entity_id)
@@ -295,9 +355,12 @@ def list_timetable_entries(
         "classrooms": room_id,
     }
 
+    detail = _get_timetable(id)
+    course_ids = _same_course_ids(detail, course_id) if course_id else None
+
     entries: list[TimetableEntry] = []
-    for card in _get_timetable(id).get("cards", []):
-        if not _matches_entry_filters(card, entity_ids, course_id, day, lesson_type):
+    for card in detail.get("cards", []):
+        if not _matches_entry_filters(card, entity_ids, course_ids, day, lesson_type):
             continue
         if not _matches_time_bounds(card, start_after_minutes, end_before_minutes):
             continue

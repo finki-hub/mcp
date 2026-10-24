@@ -7,11 +7,13 @@ from app.schemas.course import (
     AccreditationYear,
     Course,
     CourseData,
+    CourseList,
     CourseMatch,
     CourseParticipants,
     CourseStaff,
     CourseStatus,
     CourseTag,
+    SemesterType,
     Staff,
     StudyProgram,
 )
@@ -20,7 +22,14 @@ from app.utils.abbreviation_matcher import (
     resolve_abbreviation,
 )
 from app.utils.http_client import get_courses
-from app.utils.query_matcher import match_query_to_group, resolve_query
+from app.utils.pagination import paginate
+from app.utils.query_matcher import (
+    match_query_to_group,
+    resolve_query,
+    transliterate_and_normalize,
+)
+
+DEFAULT_COURSE_LIMIT = 50
 
 _INACTIVE_MARKER = "(неактивиран предмет)"
 _NOT_OFFERED = "нема"
@@ -278,24 +287,73 @@ def _evaluate_offering(
     return offered_match, matched
 
 
+class _AccreditationFilter(NamedTuple):
+    program: StudyProgram | None
+    status: CourseStatus | None
+    semester: int | None
+    semester_type: SemesterType | None
+    accreditation: AccreditationYear | None
+
+    @property
+    def reports(self) -> bool:
+        return (
+            self.program is not None
+            or self.status is not None
+            or self.semester is not None
+            or self.semester_type is not None
+        )
+
+    @property
+    def scopes(self) -> bool:
+        return self.reports or self.accreditation is not None
+
+
+def _programs_summary(offered: dict[str, str]) -> str | None:
+    # The status is implied by the filter; keep only qualifiers such as "(4 г.)".
+    summary = ", ".join(
+        program + value.removeprefix(_base_status(value))
+        for program, value in offered.items()
+    )
+    return summary or None
+
+
+def _matches_semester(
+    accreditation: Accreditation,
+    semester: int | None,
+    semester_type: SemesterType | None,
+) -> bool:
+    if semester is not None and accreditation.semester != semester:
+        return False
+    if semester_type is None:
+        return True
+    return accreditation.semester is not None and (accreditation.semester % 2 == 1) == (
+        semester_type == SemesterType.WINTER
+    )
+
+
 def _evaluate_accreditation(
     accreditation: Accreditation,
-    program: StudyProgram | None,
-    status: CourseStatus | None,
-    semester: int | None,
+    filters: _AccreditationFilter,
 ) -> tuple[AccreditationMatch, bool]:
     offered_match, matched = _evaluate_offering(
         accreditation.offered_in or {},
-        program,
-        status,
+        filters.program,
+        filters.status,
     )
-    semester_value = accreditation.semester if semester is not None else None
-    if semester is not None and accreditation.semester != semester:
-        matched = False
+    programs = None
+    if filters.program is None and offered_match is not None:
+        programs = _programs_summary(offered_match)
+        offered_match = None
+    matched = matched and _matches_semester(
+        accreditation,
+        filters.semester,
+        filters.semester_type,
+    )
 
     return AccreditationMatch(
         offered_in=offered_match,
-        semester=semester_value,
+        programs=programs,
+        semester=accreditation.semester if filters.semester is None else None,
     ), matched
 
 
@@ -334,18 +392,15 @@ def _matches_staff(people: list[str], staff_filter: _StaffFilter) -> bool:
 
 def _matching_accreditations(
     course: CourseData,
-    program: StudyProgram | None,
-    status: CourseStatus | None,
-    semester: int | None,
-    accreditation: AccreditationYear | None,
+    filters: _AccreditationFilter,
 ) -> dict[str, AccreditationMatch]:
     entries: dict[str, AccreditationMatch] = {}
     for year, acc in (course.accreditations or {}).items():
         if not acc.available:
             continue
-        if accreditation is not None and year != accreditation:
+        if filters.accreditation is not None and year != filters.accreditation:
             continue
-        entry, matched = _evaluate_accreditation(acc, program, status, semester)
+        entry, matched = _evaluate_accreditation(acc, filters)
         if matched:
             entries[year] = entry
     return entries
@@ -371,6 +426,8 @@ def _course_match(
     professors: _StaffFilter,
     assistants: _StaffFilter,
     accreditations: dict[str, AccreditationMatch] | None,
+    *,
+    participants: int | None = None,
 ) -> CourseMatch:
     return CourseMatch(
         name=course.name,
@@ -380,6 +437,7 @@ def _course_match(
         or None,
         assistants=[a for a in course.staff.assistants if a in assistants.candidates]
         or None,
+        participants=participants,
         accreditations=accreditations,
     )
 
@@ -391,56 +449,180 @@ def _reported_accreditations(
     return entries if report else None
 
 
+class _Snapshot(NamedTuple):
+    records: list[dict]
+    courses: list[CourseData]
+    latest_participants_year: str | None
+
+
+_snapshots: list[_Snapshot] = []
+
+
+def _course_snapshot() -> _Snapshot:
+    # The HTTP cache returns the same list object until it refreshes, so the parsed
+    # courses are rebuilt only when upstream data changes.
+    records = get_courses()
+    if _snapshots and _snapshots[0].records is records:
+        return _snapshots[0]
+
+    courses = [_build_course(record) for record in records]
+    years = {
+        year
+        for course in courses
+        for year, count in course.participants.items()
+        if count > 0
+    }
+    snapshot = _Snapshot(records, courses, max(years, default=None))
+    _snapshots[:] = [snapshot]
+    return snapshot
+
+
+class _QueryFilter(NamedTuple):
+    normalized: str
+    abbreviation_matches: list[str]
+
+
+def _query_filter(query: str | None, records: list[dict]) -> _QueryFilter | None:
+    query = (query or "").strip()
+    if not query:
+        return None
+    return _QueryFilter(
+        transliterate_and_normalize(query),
+        resolve_abbreviation(query, build_abbreviation_index(records)),
+    )
+
+
+def _matches_query(course: CourseData, query: _QueryFilter | None) -> bool:
+    if query is None:
+        return True
+    # An exact abbreviation wins over substrings, so "НП" does not also match "БнП".
+    if query.abbreviation_matches:
+        return course.name in query.abbreviation_matches
+    names = [course.name, course.abbreviation or ""]
+    names += [acc.name for acc in course.accreditations.values() if acc.name]
+    return any(query.normalized in transliterate_and_normalize(n) for n in names)
+
+
+class _ParticipantFilter(NamedTuple):
+    year: str | None
+    minimum: int | None
+    maximum: int | None
+    reports: bool
+
+
+def _participant_count(
+    course: CourseData,
+    filters: _ParticipantFilter,
+) -> tuple[int | None, bool]:
+    if not filters.reports:
+        return None, True
+    count = course.participants.get(filters.year, 0) if filters.year else 0
+    if filters.minimum is None and filters.maximum is None:
+        return count, True
+    # Upstream stores 0 for courses not running that year, so a range filter skips
+    # them unless the caller asks for them with min_participants=0.
+    if count == 0 and filters.minimum != 0:
+        return count, False
+    within = (filters.minimum is None or count >= filters.minimum) and (
+        filters.maximum is None or count <= filters.maximum
+    )
+    return count, within
+
+
+def _course_list(
+    matches: list[CourseMatch],
+    participants: _ParticipantFilter,
+    limit: int,
+    offset: int,
+) -> CourseList:
+    page = paginate(matches, limit=limit, offset=offset)
+    return CourseList(
+        total=page.total,
+        truncated=page.truncated,
+        note=page.note,
+        participants_year=participants.year if participants.reports else None,
+        items=page.items,
+    )
+
+
 def list_courses(
     *,
     program: StudyProgram | None = None,
     status: CourseStatus | None = None,
     semester: int | None = None,
+    semester_type: SemesterType | None = None,
     accreditation: AccreditationYear | None = None,
     tags: list[CourseTag] | None = None,
     professors: list[str] | None = None,
     assistants: list[str] | None = None,
-) -> list[CourseMatch]:
-    courses = [_build_course(record) for record in get_courses()]
+    query: str | None = None,
+    participants_year: str | None = None,
+    min_participants: int | None = None,
+    max_participants: int | None = None,
+    sort_by_participants: bool = False,
+    limit: int = DEFAULT_COURSE_LIMIT,
+    offset: int = 0,
+) -> CourseList:
+    snapshot = _course_snapshot()
+    courses = snapshot.courses
+    participant_filter = _ParticipantFilter(
+        participants_year or snapshot.latest_participants_year,
+        min_participants,
+        max_participants,
+        participants_year is not None
+        or min_participants is not None
+        or max_participants is not None
+        or sort_by_participants,
+    )
 
     professor_filter = _staff_filter(professors, courses, "professors")
-    if professors and professor_filter.groups is None:
-        return []
     assistant_filter = _staff_filter(assistants, courses, "assistants")
-    if assistants and assistant_filter.groups is None:
-        return []
+    if (professors and professor_filter.groups is None) or (
+        assistants and assistant_filter.groups is None
+    ):
+        return _course_list([], participant_filter, limit, offset)
 
-    report_accreditations = (
-        program is not None or status is not None or semester is not None
+    query_filter = _query_filter(query, snapshot.records)
+    accreditation_filter = _AccreditationFilter(
+        program,
+        status,
+        semester,
+        semester_type,
+        accreditation,
     )
-    scopes_accreditations = report_accreditations or accreditation is not None
 
     matches: list[CourseMatch] = []
     for course in courses:
-        if not _matches_course_filters(
+        if not _matches_query(course, query_filter) or not _matches_course_filters(
             course, tags, professor_filter, assistant_filter
         ):
             continue
 
+        participants, within = _participant_count(course, participant_filter)
+        if not within:
+            continue
+
         accreditations: dict[str, AccreditationMatch] | None = None
-        if scopes_accreditations:
-            matched_entries = _matching_accreditations(
-                course,
-                program,
-                status,
-                semester,
-                accreditation,
-            )
+        if accreditation_filter.scopes:
+            matched_entries = _matching_accreditations(course, accreditation_filter)
             if not matched_entries:
                 continue
             accreditations = _reported_accreditations(
-                matched_entries, report_accreditations
+                matched_entries, accreditation_filter.reports
             )
 
         matches.append(
             _course_match(
-                course, tags, professor_filter, assistant_filter, accreditations
+                course,
+                tags,
+                professor_filter,
+                assistant_filter,
+                accreditations,
+                participants=participants,
             ),
         )
 
-    return matches
+    if sort_by_participants:
+        matches.sort(key=lambda match: -(match.participants or 0))
+
+    return _course_list(matches, participant_filter, limit, offset)

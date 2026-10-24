@@ -5,21 +5,23 @@ from typing import Annotated
 
 import anyio
 from mcp.server import MCPServer
-from mcp.types import ToolAnnotations
+from mcp.types import CallToolResult, ToolAnnotations
 from pydantic import Field
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
 from app.schemas.announcement import AnnouncementDetail, AnnouncementSearchResult
 from app.schemas.anto import AntoQuote
+from app.schemas.base import ListPage
 from app.schemas.course import (
     AccreditationYear,
     Course,
-    CourseMatch,
+    CourseList,
     CourseParticipants,
     CourseStaff,
     CourseStatus,
     CourseTag,
+    SemesterType,
     StudyProgram,
 )
 from app.schemas.defense import DefenseMatch, DiplomaResult, MasterResult
@@ -31,6 +33,7 @@ from app.schemas.staff import (
     StaffPosition,
     StaffTitle,
 )
+from app.schemas.study_program import StudyCycle, StudyProgramInfo
 from app.schemas.timetable import (
     TimetableDay,
     TimetableEntity,
@@ -41,6 +44,7 @@ from app.schemas.timetable import (
 from app.tools.announcement import get_announcement, search_announcements
 from app.tools.anto import get_random_anto_quote
 from app.tools.course import (
+    DEFAULT_COURSE_LIMIT,
     get_course_data,
     get_course_participants,
     get_course_staff,
@@ -48,10 +52,13 @@ from app.tools.course import (
 )
 from app.tools.diploma import get_diploma, list_diplomas
 from app.tools.master import get_master, list_masters
-from app.tools.room import get_room_data, list_rooms
-from app.tools.session import list_exam_session_schedules
+from app.tools.room import DEFAULT_ROOM_LIMIT, get_room_data, list_rooms
+from app.tools.session import DEFAULT_SESSION_LIMIT, list_exam_session_schedules
 from app.tools.staff import get_staff_member, list_staff
+from app.tools.study_program import list_study_programs
 from app.tools.timetable import (
+    DEFAULT_ENTITY_LIMIT,
+    DEFAULT_TIMETABLE_LIMIT,
     list_timetable_courses,
     list_timetable_entries,
     list_timetable_groups,
@@ -66,8 +73,17 @@ from app.utils.analytics import (
     track_tool,
 )
 from app.utils.settings import Settings
+from app.utils.tool_result import compact_result
 
 settings = Settings()
+
+type _Offset = Annotated[
+    int,
+    Field(
+        description="Број на резултати што се прескокнуваат (за следна страница).",
+        ge=0,
+    ),
+]
 
 
 def make_app(settings: Settings) -> MCPServer:
@@ -94,8 +110,10 @@ def make_app(settings: Settings) -> MCPServer:
     @mcp.tool(
         name="list_exam_session_schedules",
         description=(
-            "Враќа достапни датотеки со распореди за испитни сесии и колоквиумски недели. "
-            "Секоја ставка содржи ознака на сесијата и линк за преземање."
+            "Враќа датотеки со распореди за испитни сесии и колоквиумски недели, "
+            "најновите прво. Секоја ставка содржи ознака на сесијата и линк за "
+            "преземање. Филтрирај по академска година или клучен збор (на пр. „Јуни“, "
+            "„Колоквиум“) наместо да ги листаш сите."
         ),
         annotations=ToolAnnotations(
             title="Датотеки со распореди за испитни сесии",
@@ -106,8 +124,41 @@ def make_app(settings: Settings) -> MCPServer:
         ),
     )
     @track_tool("list_exam_session_schedules")
-    async def list_exam_session_schedules_tool() -> list[ExamSessionScheduleFile]:
-        return list_exam_session_schedules()
+    async def list_exam_session_schedules_tool(
+        *,
+        academic_year: Annotated[
+            str | None,
+            Field(
+                description="Академска година во формат ГГГГ/ГГГГ.",
+                examples=["2025/2026"],
+                pattern=r"^\d{4}/\d{4}$",
+            ),
+        ] = None,
+        query: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "Дел од ознаката на сесијата (кирилица или латиница), на пр. "
+                    "„Јуни“, „Септември“, „Колоквиум“, „Зимски“."
+                ),
+                examples=["Јуни", "kolokvium"],
+                max_length=128,
+            ),
+        ] = None,
+        limit: Annotated[
+            int,
+            Field(description="Максимален број на резултати.", ge=1, le=100),
+        ] = DEFAULT_SESSION_LIMIT,
+        offset: _Offset = 0,
+    ) -> Annotated[CallToolResult, ListPage[ExamSessionScheduleFile]]:
+        return compact_result(
+            list_exam_session_schedules(
+                academic_year=academic_year,
+                query=query,
+                limit=limit,
+                offset=offset,
+            )
+        )
 
     @mcp.tool(
         name="get_random_anto_quote",
@@ -127,8 +178,10 @@ def make_app(settings: Settings) -> MCPServer:
     @mcp.tool(
         name="list_timetables",
         description=(
-            "Враќа листа на достапни распореди. Секоја ставка содржи ID, наслов, "
-            "почетен датум и академска година."
+            "Враќа листа на распореди, најновите прво. Секоја ставка содржи ID, "
+            "наслов, почетен датум, академска година и дали е активен. Обично не е "
+            "потребна: другите алатки за распоред стандардно го користат моментално "
+            "активниот распоред."
         ),
         annotations=ToolAnnotations(
             title="Листа на распореди",
@@ -139,14 +192,32 @@ def make_app(settings: Settings) -> MCPServer:
         ),
     )
     @track_tool("list_timetables")
-    async def list_timetables_tool() -> list[TimetableSummary]:
-        return list_timetables()
+    async def list_timetables_tool(
+        *,
+        academic_year: Annotated[
+            int | None,
+            Field(
+                description="Почетна година на академската година (2025 = 2025/2026).",
+                examples=[2025],
+            ),
+        ] = None,
+        limit: Annotated[
+            int,
+            Field(description="Максимален број на резултати.", ge=1, le=100),
+        ] = DEFAULT_TIMETABLE_LIMIT,
+        offset: _Offset = 0,
+    ) -> Annotated[CallToolResult, ListPage[TimetableSummary]]:
+        return compact_result(
+            list_timetables(academic_year=academic_year, limit=limit, offset=offset)
+        )
 
     @mcp.tool(
         name="list_timetable_groups",
         description=(
-            "Враќа групи во распоред (означува година на студии и студиска програма). Секоја ставка содржи ID и име; ID може да се "
-            "користи како `group_id` во `list_timetable_entries`."
+            "Враќа групи во распоред (година на студии и студиска програма, на пр. "
+            "„2г-КН“, „1y-SEIS“). Секоја ставка содржи ID и име; ID може да се "
+            "користи како `group_id` во `list_timetable_entries`. Користи `query` за "
+            "една програма или година."
         ),
         annotations=ToolAnnotations(
             title="Групи во распоред",
@@ -168,8 +239,23 @@ def make_app(settings: Settings) -> MCPServer:
                 examples=["28"],
             ),
         ] = None,
-    ) -> list[TimetableEntity]:
-        return list_timetable_groups(id)
+        query: Annotated[
+            str | None,
+            Field(
+                description="Дел од името на групата (кирилица или латиница).",
+                examples=["КН", "3г", "SEIS"],
+                max_length=128,
+            ),
+        ] = None,
+        limit: Annotated[
+            int,
+            Field(description="Максимален број на резултати.", ge=1, le=500),
+        ] = DEFAULT_ENTITY_LIMIT,
+        offset: _Offset = 0,
+    ) -> Annotated[CallToolResult, ListPage[TimetableEntity]]:
+        return compact_result(
+            list_timetable_groups(id, query=query, limit=limit, offset=offset)
+        )
 
     @mcp.tool(
         name="list_timetable_professors",
@@ -232,8 +318,10 @@ def make_app(settings: Settings) -> MCPServer:
     @mcp.tool(
         name="list_timetable_courses",
         description=(
-            "Враќа предмети во распоред. Секоја ставка содржи ID и име; ID може да се "
-            "користи како `course_id` во `list_timetable_entries`."
+            "Враќа предмети во распоред, секој предмет еднаш. Секоја ставка содржи ID "
+            "и име; ID може да се користи како `course_id` во `list_timetable_entries` "
+            "(ги враќа и предавањата и вежбите). Користи `query` за да најдеш "
+            "конкретен предмет."
         ),
         annotations=ToolAnnotations(
             title="Предмети во распоред",
@@ -255,8 +343,23 @@ def make_app(settings: Settings) -> MCPServer:
                 examples=["28"],
             ),
         ] = None,
-    ) -> list[TimetableEntity]:
-        return list_timetable_courses(id)
+        query: Annotated[
+            str | None,
+            Field(
+                description="Дел од името на предметот (кирилица или латиница).",
+                examples=["Бази на податоци", "veb"],
+                max_length=256,
+            ),
+        ] = None,
+        limit: Annotated[
+            int,
+            Field(description="Максимален број на резултати.", ge=1, le=500),
+        ] = DEFAULT_ENTITY_LIMIT,
+        offset: _Offset = 0,
+    ) -> Annotated[CallToolResult, ListPage[TimetableEntity]]:
+        return compact_result(
+            list_timetable_courses(id, query=query, limit=limit, offset=offset)
+        )
 
     @mcp.tool(
         name="list_timetable_entries",
@@ -310,7 +413,10 @@ def make_app(settings: Settings) -> MCPServer:
         course_id: Annotated[
             str | None,
             Field(
-                description="ID на предметот добиен од `list_timetable_courses`.",
+                description=(
+                    "ID на предметот добиен од `list_timetable_courses`; ги вклучува "
+                    "сите типови на термини за предметот."
+                ),
                 examples=["30"],
             ),
         ] = None,
@@ -360,10 +466,17 @@ def make_app(settings: Settings) -> MCPServer:
     @mcp.tool(
         name="list_courses",
         description=(
-            "Враќа листа на предмети што ги задоволуваат зададените филтри "
-            "(комбинирани со И). Сите филтри се опционални. Програма, статус и "
-            "семестар се проверуваат заедно во рамки на една акредитација; предметот "
-            "се вклучува ако барем една акредитација ги исполнува."
+            "Враќа листа на предмети (име и кратенка) што ги задоволуваат зададените "
+            "филтри (комбинирани со И). Сите филтри се опционални; користи ги за да "
+            "добиеш кратка листа наместо сите предмети. Програма, статус, семестар и "
+            "тип на семестар се проверуваат заедно во рамки на една акредитација; "
+            "предметот се вклучува ако барем една акредитација ги исполнува, а "
+            "совпаднатите акредитации се прикажуваат со семестар. Филтрите за број на "
+            "запишани студенти (`min_participants`, `max_participants`, "
+            "`sort_by_participants`) додаваат број на запишани по предмет, така што "
+            "не е потребно `get_course_participants` за секој предмет. Резултатот е "
+            "ограничен со `limit`; ако `truncated` е true, стесни ги филтрите или "
+            "користи `offset`. Детали за предмет: `get_course_data`."
         ),
         annotations=ToolAnnotations(
             title="Листа на предмети по филтри",
@@ -379,7 +492,10 @@ def make_app(settings: Settings) -> MCPServer:
         program: Annotated[
             StudyProgram | None,
             Field(
-                description="Студиска програма; само предмети што се нудат во неа.",
+                description=(
+                    "Студиска програма (прв циклус); само предмети што се нудат во "
+                    "неа. Кодовите и имињата се во `list_study_programs`."
+                ),
                 examples=["КН"],
             ),
         ] = None,
@@ -396,6 +512,16 @@ def make_app(settings: Settings) -> MCPServer:
         semester: Annotated[
             int | None,
             Field(description="Семестар (1–8).", ge=1, le=8),
+        ] = None,
+        semester_type: Annotated[
+            SemesterType | None,
+            Field(
+                description=(
+                    "Тип на семестар: „зимски“ (непарни семестри 1, 3, 5, 7) или "
+                    "„летен“ (парни семестри 2, 4, 6, 8)."
+                ),
+                examples=["зимски"],
+            ),
         ] = None,
         accreditation: Annotated[
             AccreditationYear | None,
@@ -425,15 +551,84 @@ def make_app(settings: Settings) -> MCPServer:
                 examples=[["Ана Тодоровска"]],
             ),
         ] = None,
-    ) -> list[CourseMatch]:
-        return list_courses(
-            program=program,
-            status=status,
-            semester=semester,
-            accreditation=accreditation,
-            tags=tags,
-            professors=professors,
-            assistants=assistants,
+        query: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "Дел од името или кратенка на предметот (кирилица или латиница)."
+                ),
+                examples=["програмирање", "АПС", "bazi"],
+                max_length=256,
+            ),
+        ] = None,
+        participants_year: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "Академска година (ГГГГ/ГГГГ) за бројот на запишани студенти. "
+                    "Стандардно последната година со податоци; за тековната година "
+                    "предметите од семестар што уште не почнал имаат 0 запишани."
+                ),
+                examples=["2025/2026"],
+                pattern=r"^\d{4}/\d{4}$",
+            ),
+        ] = None,
+        min_participants: Annotated[
+            int | None,
+            Field(
+                description=(
+                    "Минимален број на запишани студенти (вклучително). Предметите "
+                    "со 0 запишани (не се изведуваат или немаат податоци за таа "
+                    "година) се изоставуваат освен ако е зададено 0."
+                ),
+                ge=0,
+                examples=[5],
+            ),
+        ] = None,
+        max_participants: Annotated[
+            int | None,
+            Field(
+                description=(
+                    "Максимален број на запишани студенти (вклучително). Предметите "
+                    "со 0 запишани се изоставуваат освен ако `min_participants` е 0."
+                ),
+                ge=0,
+                examples=[15],
+            ),
+        ] = None,
+        sort_by_participants: Annotated[
+            bool,
+            Field(
+                description=(
+                    "Подреди по број на запишани студенти, најмногу прво; предметите "
+                    "со 0 запишани се на крајот."
+                ),
+            ),
+        ] = False,
+        limit: Annotated[
+            int,
+            Field(description="Максимален број на предмети.", ge=1, le=200),
+        ] = DEFAULT_COURSE_LIMIT,
+        offset: _Offset = 0,
+    ) -> Annotated[CallToolResult, CourseList]:
+        return compact_result(
+            list_courses(
+                program=program,
+                status=status,
+                semester=semester,
+                semester_type=semester_type,
+                accreditation=accreditation,
+                tags=tags,
+                professors=professors,
+                assistants=assistants,
+                query=query,
+                participants_year=participants_year,
+                min_participants=min_participants,
+                max_participants=max_participants,
+                sort_by_participants=sort_by_participants,
+                limit=limit,
+                offset=offset,
+            )
         )
 
     @mcp.tool(
@@ -498,7 +693,11 @@ def make_app(settings: Settings) -> MCPServer:
 
     @mcp.tool(
         name="get_course_participants",
-        description="Враќа број на запишани студенти по академска година за предмет.",
+        description=(
+            "Враќа број на запишани студенти по академска година за еден предмет. За "
+            "повеќе предмети (на пр. предмети со 5 до 15 запишани) користи "
+            "`list_courses` со `min_participants`/`max_participants` во еден повик."
+        ),
         annotations=ToolAnnotations(
             title="Запишани студенти по предмет",
             destructiveHint=False,
@@ -525,10 +724,63 @@ def make_app(settings: Settings) -> MCPServer:
         return get_course_participants(course_name)
 
     @mcp.tool(
+        name="list_study_programs",
+        description=(
+            "Враќа студиски програми на ФИНКИ (прв, втор и трет циклус): код, име на "
+            "македонски и англиски, циклус, времетраење во години, акредитација, "
+            "јазик на настава (само кога е официјално потврден) и линк. Кратенката "
+            "(на пр. „КН“) се користи како `program` во `list_courses`."
+        ),
+        annotations=ToolAnnotations(
+            title="Студиски програми",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=False,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("list_study_programs")
+    async def list_study_programs_tool(
+        *,
+        cycle: Annotated[
+            StudyCycle | None,
+            Field(
+                description=(
+                    "Циклус: „прв“ (додипломски), „втор“ (магистерски) или „трет“ "
+                    "(докторски)."
+                ),
+                examples=["прв"],
+            ),
+        ] = None,
+        accreditation: Annotated[
+            AccreditationYear | None,
+            Field(
+                description="Година на акредитација.",
+                examples=["2023"],
+            ),
+        ] = None,
+        query: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "Дел од името, кодот или кратенката на програмата (кирилица или "
+                    "латиница)."
+                ),
+                examples=["КН", "seis", "софтверско"],
+                max_length=256,
+            ),
+        ] = None,
+    ) -> Annotated[CallToolResult, list[StudyProgramInfo]]:
+        return compact_result(
+            list_study_programs(cycle=cycle, accreditation=accreditation, query=query)
+        )
+
+    @mcp.tool(
         name="list_rooms",
         description=(
-            "Враќа листа на простории што ги задоволуваат зададените филтри "
-            "(комбинирани со И). Сите филтри се опционални."
+            "Враќа листа на простории (име, тип, локација) што ги задоволуваат "
+            "зададените филтри (комбинирани со И). Сите филтри се опционални; "
+            "резултатот е ограничен со `limit`. Детали за просторија: `get_room_data`."
         ),
         annotations=ToolAnnotations(
             title="Листа на простории по филтри",
@@ -569,12 +821,31 @@ def make_app(settings: Settings) -> MCPServer:
                 examples=[40],
             ),
         ] = None,
-    ) -> list[RoomMatch]:
-        return list_rooms(
-            type=type,
-            location=location,
-            floor=floor,
-            min_capacity=min_capacity,
+        *,
+        query: Annotated[
+            str | None,
+            Field(
+                description="Дел од името на просторијата (кирилица или латиница).",
+                examples=["амфитеатар", "b2"],
+                max_length=128,
+            ),
+        ] = None,
+        limit: Annotated[
+            int,
+            Field(description="Максимален број на простории.", ge=1, le=500),
+        ] = DEFAULT_ROOM_LIMIT,
+        offset: _Offset = 0,
+    ) -> Annotated[CallToolResult, ListPage[RoomMatch]]:
+        return compact_result(
+            list_rooms(
+                type=type,
+                location=location,
+                floor=floor,
+                min_capacity=min_capacity,
+                query=query,
+                limit=limit,
+                offset=offset,
+            )
         )
 
     @mcp.tool(
