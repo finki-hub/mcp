@@ -1,5 +1,3 @@
-import re
-
 from app.schemas.timetable import (
     TimetableDay,
     TimetableEntity,
@@ -10,7 +8,6 @@ from app.schemas.timetable import (
 )
 from app.utils.http_client import get_timetable_detail, get_timetables
 
-_LESSON_SUFFIX_RE = re.compile(r"\s*\(([^()]*)\)\s*$")
 _LESSON_TOKENS = {"п", "ав", "лаб"}
 _LESSON_TYPE_TOKENS = {
     TimetableLessonType.LECTURE: "п",
@@ -65,15 +62,18 @@ def _get_timetable(id: str | None) -> dict:
 
 def _lesson_tokens_and_course_name(name: str) -> tuple[list[str], str]:
     course_name = name.strip()
-    match = _LESSON_SUFFIX_RE.search(course_name)
-    if not match:
+    if not course_name.endswith(")"):
+        return [], course_name
+    suffix_start = course_name.rfind("(")
+    if suffix_start == -1:
+        return [], course_name
+    suffix = course_name[suffix_start + 1 : -1]
+    if ")" in suffix:
         return [], course_name
 
-    tokens = [
-        token.strip().casefold() for token in match.group(1).split("+") if token.strip()
-    ]
+    tokens = [token.strip().casefold() for token in suffix.split("+") if token.strip()]
     if tokens and all(token in _LESSON_TOKENS for token in tokens):
-        return tokens, course_name[: match.start()].strip()
+        return tokens, course_name[:suffix_start].strip()
 
     return [], course_name
 
@@ -185,13 +185,14 @@ def _build_entry(card: dict) -> TimetableEntry:
     subject = card.get("subject") or {}
     subject_name = _clean(subject.get("name")) or ""
     day_name = _clean(card.get("dayName")) or ""
+    professors = [
+        name
+        for teacher in (card.get("teachers", []) or [])
+        if (name := _clean(teacher.get("name")))
+    ]
     return TimetableEntry(
         course=_course_name(subject_name),
-        professors=[
-            name
-            for teacher in (card.get("teachers", []) or [])
-            if (name := _clean(teacher.get("name")))
-        ],
+        professors=professors,
         groups=_entry_groups(card),
         room=_entry_room(card),
         day=_UPSTREAM_DAYS[day_name],
@@ -231,6 +232,42 @@ def list_timetable_courses(id: str | None = None) -> list[TimetableEntity]:
     return _entities(_get_timetable(id), "subjects", strip_lesson_type=True)
 
 
+def _matches_time_bounds(
+    card: dict,
+    start_after: int | None,
+    end_before: int | None,
+) -> bool:
+    if start_after is not None:
+        start_time = _clean(card.get("startTime"))
+        if start_time is None or _time_to_minutes(start_time) < start_after:
+            return False
+    if end_before is not None:
+        end_time = _clean(card.get("endTime"))
+        if end_time is None or _time_to_minutes(end_time) > end_before:
+            return False
+    return True
+
+
+def _matches_entry_filters(
+    card: dict,
+    entity_ids: dict[str, str | None],
+    course_id: str | None,
+    day: TimetableDay | None,
+    lesson_type: TimetableLessonType | None,
+) -> bool:
+    subject = card.get("subject") or {}
+    if course_id is not None and _clean(subject.get("id")) != course_id:
+        return False
+    if not all(
+        _contains_entity_id(card, key, entity_id)
+        for key, entity_id in entity_ids.items()
+    ):
+        return False
+    if day is not None and _UPSTREAM_DAYS.get(str(card.get("dayName"))) != day:
+        return False
+    return _matches_lesson_type(subject.get("name"), lesson_type)
+
+
 def list_timetable_entries(
     *,
     id: str | None = None,
@@ -252,30 +289,18 @@ def list_timetable_entries(
 
     start_after_minutes = _time_to_minutes(start_after) if start_after else None
     end_before_minutes = _time_to_minutes(end_before) if end_before else None
+    entity_ids = {
+        "classes": group_id,
+        "teachers": professor_id,
+        "classrooms": room_id,
+    }
 
     entries: list[TimetableEntry] = []
     for card in _get_timetable(id).get("cards", []):
-        subject = card.get("subject") or {}
-        if course_id is not None and _clean(subject.get("id")) != course_id:
+        if not _matches_entry_filters(card, entity_ids, course_id, day, lesson_type):
             continue
-        if not _contains_entity_id(card, "classes", group_id):
+        if not _matches_time_bounds(card, start_after_minutes, end_before_minutes):
             continue
-        if not _contains_entity_id(card, "teachers", professor_id):
-            continue
-        if not _contains_entity_id(card, "classrooms", room_id):
-            continue
-        if day is not None and _UPSTREAM_DAYS.get(str(card.get("dayName"))) != day:
-            continue
-        if not _matches_lesson_type(subject.get("name"), lesson_type):
-            continue
-        if start_after_minutes is not None:
-            start_time = _clean(card.get("startTime"))
-            if start_time is None or _time_to_minutes(start_time) < start_after_minutes:
-                continue
-        if end_before_minutes is not None:
-            end_time = _clean(card.get("endTime"))
-            if end_time is None or _time_to_minutes(end_time) > end_before_minutes:
-                continue
 
         entries.append(_build_entry(card))
 

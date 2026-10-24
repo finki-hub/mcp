@@ -4,6 +4,9 @@ from pydantic import BaseModel, Field
 
 from app.schemas.base import PrunedModel
 
+_DOCENT = "Доцент"
+_STAFF_NAME_EXAMPLE = "Александар Стојменски"
+
 
 class StaffTitle(StrEnum):
     DOCTOR = "д-р"
@@ -14,7 +17,7 @@ class StaffTitle(StrEnum):
 class StaffPosition(StrEnum):
     FULL_PROFESSOR = "Редовен професор"
     ASSOCIATE_PROFESSOR = "Вонреден професор"
-    DOCENT = "Доцент"
+    DOCENT = _DOCENT
     ASSISTANT = "Асистент докторанд"
     DEMONSTRATOR = "Демонстратор"
     ICT_ADVISOR = "Советник во одделение за ИКТ"
@@ -25,7 +28,7 @@ class StaffMatch(PrunedModel):
     name: str = Field(
         ...,
         description="Име и презиме на вработениот",
-        examples=["Александар Стојменски"],
+        examples=[_STAFF_NAME_EXAMPLE],
     )
     title: str | None = Field(
         None,
@@ -35,7 +38,7 @@ class StaffMatch(PrunedModel):
     position: str | None = Field(
         None,
         description="Позиција на вработениот.",
-        examples=["Доцент"],
+        examples=[_DOCENT],
     )
     active: bool = Field(
         ...,
@@ -53,7 +56,7 @@ class StaffProfile(BaseModel):
     position: str | None = Field(
         None,
         description="Позиција на вработениот.",
-        examples=["Доцент"],
+        examples=[_DOCENT],
     )
     active: bool = Field(
         ...,
@@ -91,7 +94,7 @@ class StaffMember(PrunedModel):
     name: str = Field(
         ...,
         description="Име и презиме на вработениот",
-        examples=["Александар Стојменски"],
+        examples=[_STAFF_NAME_EXAMPLE],
     )
     staff: StaffProfile | None = Field(
         None,
@@ -105,7 +108,7 @@ class StaffMember(PrunedModel):
     suggestions: list[str] | None = Field(
         None,
         description="Предложени имиња ако нема точно совпаѓање",
-        examples=[["Александар Стојменски", "Александар Тенев"]],
+        examples=[[_STAFF_NAME_EXAMPLE, "Александар Тенев"]],
     )
     match_info: dict | None = Field(
         None,
@@ -113,7 +116,7 @@ class StaffMember(PrunedModel):
         examples=[
             {
                 "original_query": "aleksandar stojmenski",
-                "matched_staff": "Александар Стојменски",
+                "matched_staff": _STAFF_NAME_EXAMPLE,
                 "similarity_score": 95,
                 "match_type": "fuzzy",
             },

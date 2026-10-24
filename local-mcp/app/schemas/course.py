@@ -4,6 +4,9 @@ from pydantic import BaseModel, Field
 
 from app.schemas.base import PrunedModel
 
+_ELECTIVE = "изборен"
+_COURSE_NAME_DESCRIPTION = "Име на предметот"
+
 
 class StudyProgram(StrEnum):
     """
@@ -30,7 +33,7 @@ class StudyProgram(StrEnum):
 
 class CourseStatus(StrEnum):
     MANDATORY = "задолжителен"
-    ELECTIVE = "изборен"
+    ELECTIVE = _ELECTIVE
 
 
 class CourseTag(StrEnum):
@@ -89,7 +92,7 @@ class Accreditation(BaseModel):
     )
     name: str | None = Field(
         None,
-        description="Име на предметот",
+        description=_COURSE_NAME_DESCRIPTION,
         examples=["Структурно програмирање"],
     )
     code: str | None = Field(
@@ -125,7 +128,7 @@ class Accreditation(BaseModel):
             "не се нуди не се вклучени. ИЕ (акредитација 2023) е истата програма како КЕ "
             "(акредитација 2018)."
         ),
-        examples=[{"КН": "задолжителен", "СИИС": "изборен"}],
+        examples=[{"КН": "задолжителен", "СИИС": _ELECTIVE}],
     )
 
 
@@ -142,7 +145,7 @@ class CourseData(BaseModel):
 class _CourseLookup(PrunedModel):
     name: str = Field(
         ...,
-        description="Име на предметот",
+        description=_COURSE_NAME_DESCRIPTION,
         examples=["Структурно програмирање"],
     )
     abbreviation: str | None = Field(
@@ -210,7 +213,7 @@ class AccreditationMatch(PrunedModel):
     offered_in: dict[str, str] | None = Field(
         None,
         description="Програма → статус (за филтрираната програма или статус)",
-        examples=[{"КН": "изборен"}],
+        examples=[{"КН": _ELECTIVE}],
     )
     semester: int | None = Field(
         None,
@@ -222,7 +225,7 @@ class AccreditationMatch(PrunedModel):
 class CourseMatch(PrunedModel):
     name: str = Field(
         ...,
-        description="Име на предметот",
+        description=_COURSE_NAME_DESCRIPTION,
         examples=["Веб програмирање"],
     )
     abbreviation: str | None = Field(
