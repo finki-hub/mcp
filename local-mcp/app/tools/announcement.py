@@ -138,8 +138,18 @@ def query_terms(query: str | None) -> tuple[QueryTerm, ...]:
     return tuple(QueryTerm(word, _stem(word)) for word in dict.fromkeys(words))
 
 
+def _is_inflection(word: str, base: str) -> bool:
+    return word.startswith(base) and (
+        len(word) == len(base) or word[len(base) :] in _SUFFIXES
+    )
+
+
+def _has_full_match(words: Collection[str], term: QueryTerm) -> bool:
+    return any(_is_inflection(word, term.word) for word in words)
+
+
 def _term_weight(words: Collection[str], term: QueryTerm) -> float:
-    if any(word.startswith(term.word) for word in words):
+    if _has_full_match(words, term):
         return 1.0
     if any(word.startswith(term.stem) for word in words):
         return _STEM_MATCH_WEIGHT
@@ -147,12 +157,19 @@ def _term_weight(words: Collection[str], term: QueryTerm) -> float:
 
 
 def _keyword_score(record: AnnouncementRecord, terms: Sequence[QueryTerm]) -> float:
-    return sum(
-        max(
-            _TITLE_WEIGHT * _term_weight(record.title_words, term),
-            _BODY_WEIGHT * _term_weight(record.body_words, term),
+    weights = [
+        (
+            _term_weight(record.title_words, term),
+            _term_weight(record.body_words, term),
         )
         for term in terms
+    ]
+    # Stems alone ("пријав" in "пријавени" for "пријавување") are too loose to
+    # carry a multi-word query: count them only next to a full-word match.
+    if len(terms) > 1 and all(max(pair) < 1.0 for pair in weights):
+        return 0.0
+    return sum(
+        max(_TITLE_WEIGHT * title, _BODY_WEIGHT * body) for title, body in weights
     )
 
 

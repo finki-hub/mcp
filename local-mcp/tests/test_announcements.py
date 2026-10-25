@@ -190,6 +190,55 @@ def test_since_filters_older_posts(monkeypatch: pytest.MonkeyPatch) -> None:
     assert [match.id for match in everything.announcements] == [21633, 17409]
 
 
+_SINGLE_PARENT = _post(
+    21726,
+    "2026-10-07",
+    "Интерен Оглас – за избор на студенти чие родителско право го врши само еден "
+    "родител, кои се стекнуваат со право на плаќање на половина од партиципацијата",
+    "<p>Пријавата со потребните документи се поднесува до 20.10.2026. Пријавените "
+    "студенти треба да имаат положени испитисо просечна оценка над 8,00.</p>",
+)
+_ADMITTED = _post(
+    21684,
+    "2026-09-29",
+    "Пријавени кандидати и решение за прием за третиот уписен рок",
+    "<p>Листа на кандидати примени на прв циклус студии.</p>",
+)
+_HACKATHON = _post(
+    21744,
+    "2026-10-17",
+    "Повик за студентски хакатон",
+    "<p>Пријавувањето на тимовите е отворено до 30.10.2026.</p>",
+)
+
+
+@pytest.mark.parametrize("query", ["пријавување испити", "prijavuvanje ispiti"])
+def test_stem_only_body_matches_do_not_rank(
+    monkeypatch: pytest.MonkeyPatch, query: str
+) -> None:
+    _use(monkeypatch, _snapshot(_SINGLE_PARENT, _ADMITTED, _HACKATHON, _EXAMS))
+
+    result = search_announcements(query=query)
+
+    assert [match.id for match in result.announcements][:1] == [21500]
+    assert 21726 not in {match.id for match in result.announcements}
+    assert 21684 not in {match.id for match in result.announcements}
+
+
+def test_single_term_query_keeps_stem_matches(monkeypatch: pytest.MonkeyPatch) -> None:
+    scholarship = _post(
+        21700,
+        "2026-10-01",
+        "Конкурс за стипендија за постдипломски студии",
+        "<p>Рок за аплицирање: 15.11.2026.</p>",
+    )
+    _use(monkeypatch, _snapshot(_GRANT, scholarship))
+
+    result = search_announcements(query="стипендии")
+
+    assert [match.id for match in result.announcements] == [21700]
+
+
 def test_limit_caps_results(monkeypatch: pytest.MonkeyPatch) -> None:
     _use(monkeypatch, _snapshot(_GRANT, _ORIGINAL, _EXAMS, _EXTENSION))
 
