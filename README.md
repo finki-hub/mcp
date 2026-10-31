@@ -33,6 +33,11 @@ docker compose up -d
 
 Server runs on `http://localhost:8808`
 
+### Environment
+
+- `PUBAPI_URL` - FINKI public API base URL (default `https://pubapi.finki.ukim.mk`)
+- `PUBAPI_API_KEY` - API key for the FINKI public API, sent as `X-Api-Key`; without it `get_course_syllabus` reports the syllabus as unavailable
+
 ## Tools
 
 - Get available courses (staff/participants)
@@ -41,6 +46,7 @@ Server runs on `http://localhost:8808`
 - Get course staff/participants information
 - Fuzzy query matching support
 - Course lookup by abbreviation (Cyrillic or Latin, e.g. `АПС`, `БнП`/`БП`, `paps`); shared abbreviations return all matching courses as suggestions
+- Get the official course syllabus (`get_course_syllabus`: topics by week for lectures and exercises, goals, learning methods, literature, credits, weekly hours; newest accreditation by default) from the pubapi subjects endpoint
 - Search FINKI announcements from finki.ukim.mk (`search_announcements`: deadlines for semester enrollment, exam registration, admission rounds, scholarships; Cyrillic or Latin keywords) and read one in full (`get_announcement`)
 
 ## License

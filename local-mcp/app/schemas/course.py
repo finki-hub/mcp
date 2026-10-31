@@ -283,3 +283,89 @@ class CourseList(ListPage[CourseMatch]):
         description="Академска година за која е даден бројот на запишани студенти",
         examples=["2026/2027"],
     )
+
+
+class WeeklyHours(BaseModel):
+    lectures: int = Field(..., description="Часови предавања неделно", examples=[3])
+    auditory_exercises: int = Field(
+        ...,
+        description="Часови аудиториски вежби неделно",
+        examples=[2],
+    )
+    lab_exercises: int = Field(
+        ...,
+        description="Часови лабораториски вежби неделно",
+        examples=[0],
+    )
+
+
+class CourseSyllabus(_CourseLookup):
+    code: str | None = Field(
+        None,
+        description="Код на предметот во избраната акредитација",
+        examples=["F23L2S030"],
+    )
+    name_en: str | None = Field(
+        None,
+        description="Име на предметот на англиски",
+        examples=["Artificial Intelligence"],
+    )
+    accreditation: str | None = Field(
+        None,
+        description="Акредитација од која е силабусот",
+        examples=["2023"],
+    )
+    other_accreditations: list[str] | None = Field(
+        None,
+        description="Други акредитации во кои предметот постои (се бараат со `accreditation`)",
+        examples=[["2018"]],
+    )
+    semester: int | None = Field(None, description="Семестар (1–8)", examples=[4])
+    semester_type: SemesterType | None = Field(
+        None,
+        description="Зимски или летен семестар",
+        examples=["летен"],
+    )
+    credits: int | float | None = Field(
+        None,
+        description="Број на ЕКТС кредити",
+        examples=[6],
+    )
+    weekly_hours: WeeklyHours | None = Field(
+        None,
+        description="Неделен фонд на часови",
+    )
+    language: str | None = Field(
+        None,
+        description="Јазик на настава според силабусот",
+        examples=["Македонски и англиски"],
+    )
+    goals: str | None = Field(
+        None,
+        description="Цели на предметот (компетенции)",
+    )
+    content: str | None = Field(
+        None,
+        description=(
+            "Официјална содржина: теми по недели, одделно за предавања и вежби кога "
+            "силабусот ги дели"
+        ),
+        examples=["Предавања:\n1. Вовед. Процеси\n2. Процеси"],
+    )
+    learning_methods: str | None = Field(
+        None,
+        description="Методи на учење",
+    )
+    bibliography: list[str] | None = Field(
+        None,
+        description="Задолжителна литература",
+        examples=[["Andrew S. Tanenbaum, Modern Operating Systems, Pearson, 2022"]],
+    )
+    english_fields: list[str] | None = Field(
+        None,
+        description=(
+            "Полиња преземени од англиската верзија на силабусот бидејќи "
+            "македонската е празна"
+        ),
+        examples=[["content"]],
+    )
