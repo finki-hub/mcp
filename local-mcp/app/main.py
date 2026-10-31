@@ -20,6 +20,7 @@ from app.schemas.course import (
     CourseParticipants,
     CourseStaff,
     CourseStatus,
+    CourseSyllabus,
     CourseTag,
     SemesterType,
     StudyProgram,
@@ -56,6 +57,7 @@ from app.tools.room import DEFAULT_ROOM_LIMIT, get_room_data, list_rooms
 from app.tools.session import DEFAULT_SESSION_LIMIT, list_exam_session_schedules
 from app.tools.staff import get_staff_member, list_staff
 from app.tools.study_program import list_study_programs
+from app.tools.syllabus import get_course_syllabus
 from app.tools.timetable import (
     DEFAULT_ENTITY_LIMIT,
     DEFAULT_TIMETABLE_LIMIT,
@@ -722,6 +724,53 @@ def make_app(settings: Settings) -> MCPServer:
         ],
     ) -> CourseParticipants:
         return get_course_participants(course_name)
+
+    @mcp.tool(
+        name="get_course_syllabus",
+        description=(
+            "Враќа официјален силабус на предмет од акредитацијата на ФИНКИ: содржина "
+            "(теми по недели, одделно за предавања и вежби), цели, методи на учење, "
+            "литература, кредити и неделен фонд часови. Користи ја за прашања „што се "
+            "учи по X“ и за споредба на содржината на предмети. Стандардно ја зема "
+            "најновата акредитација во која предметот постои. Ако врати `error`, "
+            "пренеси ја пораката наместо да ја погодуваш содржината."
+        ),
+        annotations=ToolAnnotations(
+            title="Силабус (содржина) на предмет",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("get_course_syllabus")
+    async def get_course_syllabus_tool(
+        course_name: Annotated[
+            str,
+            Field(
+                description=(
+                    "Име или кратенка на предметот (на пр. „АПС“, „МИС“, „paps“). "
+                    "Кратенките се проверуваат прво; совпаѓањето на името е толерантно "
+                    "(fuzzy) и поддржува латиница. Ако кратенката припаѓа на повеќе "
+                    "предмети или нема точно совпаѓање, враќа предлози."
+                ),
+                examples=["Вештачка интелигенција", "MIS", "АПС"],
+            ),
+        ],
+        accreditation: Annotated[
+            AccreditationYear | None,
+            Field(
+                description=(
+                    "Година на акредитација; стандардно најновата во која предметот "
+                    "постои."
+                ),
+                examples=["2018"],
+            ),
+        ] = None,
+    ) -> CourseSyllabus:
+        return await anyio.to_thread.run_sync(
+            lambda: get_course_syllabus(course_name, accreditation),
+        )
 
     @mcp.tool(
         name="list_study_programs",
