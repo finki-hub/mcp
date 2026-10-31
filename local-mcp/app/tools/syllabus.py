@@ -95,38 +95,43 @@ def get_course_syllabus(
         )
 
     course = found.data
-    codes = {
+    available = {
         year: acc
         for year, acc in sorted(course.accreditations.items(), reverse=True)
-        if acc.available and acc.code
+        if acc.available
     }
     base = CourseSyllabus(
         name=course.name,
         abbreviation=course.abbreviation,
         match_info=found.match_info,
     )
-    if not codes:
+    if not available:
         base.error = (
-            f"Предметот „{course.name}“ нема код во ниедна акредитација, па "
+            f"Предметот „{course.name}“ не постои во ниедна акредитација, па "
             "силабусот не може да се преземе."
         )
         return base
 
-    year = accreditation or next(iter(codes))
-    others = [other for other in codes if other != year] or None
-    if year not in codes:
+    year = accreditation or next(iter(available))
+    base.other_accreditations = [y for y in available if y != year] or None
+    if year not in available:
         base.error = (
             f"Предметот „{course.name}“ не постои во акредитација {year}; "
-            f"достапни се: {', '.join(codes)}."
+            f"достапни се: {', '.join(available)}."
         )
-        base.other_accreditations = others
         return base
 
-    selected = codes[year]
-    code = selected.code or ""
-    base.code = code
+    selected = available[year]
     base.accreditation = year
-    base.other_accreditations = others
+    if not selected.code:
+        base.error = (
+            f"Предметот „{course.name}“ нема код во акредитација {year}, па "
+            "силабусот не може да се преземе."
+        )
+        return base
+
+    code = selected.code
+    base.code = code
     try:
         subject = fetch_subject(code)
     except (SyllabusNotFoundError, SyllabusUnavailableError) as error:

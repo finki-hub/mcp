@@ -28,6 +28,15 @@ _COURSES = [
         "2023-semester": "7",
     },
     {"name": "Алгоритми и податочни структури", "abbreviation": "АПС"},
+    {
+        "name": "Оперативни системи",
+        "abbreviation": "ОС",
+        "2018-available": "TRUE",
+        "2018-code": "F18L2S017",
+        "2018-semester": "4",
+        "2023-available": "TRUE",
+        "2023-semester": "4",
+    },
 ]
 
 
@@ -201,11 +210,28 @@ def test_course_not_found(upstream: _Upstream) -> None:
     assert upstream.requests == []
 
 
-def test_course_without_code(upstream: _Upstream) -> None:
+def test_course_without_accreditation(upstream: _Upstream) -> None:
     result = get_course_syllabus("АПС")
 
     assert result.error is not None
-    assert "нема код" in result.error
+    assert "ниедна акредитација" in result.error
+    assert upstream.requests == []
+
+
+def test_available_accreditation_without_code(upstream: _Upstream) -> None:
+    result = get_course_syllabus("ОС")
+
+    assert result.accreditation == AccreditationYear.Y2023
+    assert result.other_accreditations == [AccreditationYear.Y2018]
+    assert result.error is not None
+    assert "нема код во акредитација 2023" in result.error
+    assert upstream.requests == []
+
+    upstream.subjects["F18L2S017"] = _subject("F18L2S017")
+    older = get_course_syllabus("ОС", AccreditationYear.Y2018)
+
+    assert older.code == "F18L2S017"
+    assert older.error is None
 
 
 def test_unknown_code_upstream(upstream: _Upstream) -> None:
