@@ -232,7 +232,13 @@ def _lookup_room(name: str) -> _Lookup:
     resolution = _resolve_room_name(name, names)
     room_type: RoomType | None = None
 
-    prefixed = _split_type_prefix(query) if resolution.status != "matched" else None
+    # A fuzzy full-query match can ignore the type word, so only an exact
+    # full-name match skips the type-word lookup.
+    exact_full = resolution.status == "matched" and resolution.match_type in {
+        "exact",
+        "compact",
+    }
+    prefixed = None if exact_full else _split_type_prefix(query)
     if prefixed is not None:
         rest, prefix_type = prefixed
         typed_names = [

@@ -103,6 +103,19 @@ def test_room_data_type_word_picks_between_same_names(
     assert [r.name for r in room.get_room_data("лаб М3").rooms or []] == ["М3"]
 
 
+def test_room_data_type_word_beats_fuzzy_full_match(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rooms = [
+        {"name": "СОЦД", "type": "Лабораторија", "location": "ТМФ"},
+        {"name": "СОЦД", "type": "Кабинет", "location": "ТМФ"},
+    ]
+    monkeypatch.setattr(room, "get_rooms", lambda: rooms)
+    assert [r.type for r in room.get_room_data("кабинет СОЦД").rooms or []] == [
+        "Кабинет",
+    ]
+
+
 def test_room_data_type_word_keeps_full_names_and_misses(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
