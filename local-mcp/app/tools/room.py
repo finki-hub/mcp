@@ -19,6 +19,21 @@ DEFAULT_ROOM_LIMIT = 50
 _SEPARATORS_RE = re.compile(r"[\s._-]+")
 _DIGIT_RE = re.compile(r"\d")
 
+# Students write "Лаб 12" or "lab12" while the data names that room just "12".
+# Matched against the Cyrillic-normalized query, so Latin spellings are covered.
+_TYPE_PREFIXES: dict[str, RoomType | None] = {
+    "лабораторија": RoomType.LABORATORY,
+    "лаб": RoomType.LABORATORY,
+    "кабинет": RoomType.CABINET,
+    "каб": RoomType.CABINET,
+    "предавална": RoomType.LECTURE_HALL,
+    "просторија": None,
+    "соба": None,
+}
+_TYPE_PREFIX_RE = re.compile(
+    rf"^({'|'.join(sorted(_TYPE_PREFIXES, key=len, reverse=True))})\.?[\s._-]*(?=\w)",
+)
+
 _LATIN_MULTI = (
     ("dzh", "џ"),
     ("dz", "ѕ"),
@@ -83,6 +98,14 @@ def _manual_mk_normalize(text: str) -> str:
     for latin, cyrillic in _LATIN_MULTI:
         value = value.replace(latin, cyrillic)
     return value.translate(_LATIN_SINGLE)
+
+
+def _split_type_prefix(query: str) -> tuple[str, RoomType | None] | None:
+    normalized = _manual_mk_normalize(query)
+    match = _TYPE_PREFIX_RE.match(normalized)
+    if match is None:
+        return None
+    return normalized[match.end() :].strip(), _TYPE_PREFIXES[match.group(1)]
 
 
 def _normalized_variants(text: str) -> set[str]:
@@ -207,6 +230,25 @@ def _lookup_room(name: str) -> _Lookup:
     rooms = get_rooms()
     names = [_clean(record.get("name")) or "" for record in rooms]
     resolution = _resolve_room_name(name, names)
+    room_type: RoomType | None = None
+
+    prefixed = _split_type_prefix(query) if resolution.status != "matched" else None
+    if prefixed is not None:
+        rest, prefix_type = prefixed
+        typed_names = [
+            record_name
+            for record_name, record in zip(names, rooms, strict=True)
+            if prefix_type is None or _clean(record.get("type")) == prefix_type
+        ]
+        # Fall back to every room when the type word doesn't fit the data.
+        for candidate_names, candidate_type in (
+            (typed_names, prefix_type),
+            (names, None),
+        ):
+            retry = _resolve_room_name(rest, candidate_names)
+            if retry.status in {"matched", "ambiguous"}:
+                resolution, room_type = retry, candidate_type
+                break
 
     if resolution.status == "too_short":
         return _Lookup(
@@ -221,6 +263,7 @@ def _lookup_room(name: str) -> _Lookup:
             record
             for record in rooms
             if (_clean(record.get("name")) or "") == resolution.match
+            and (room_type is None or _clean(record.get("type")) == room_type)
         ]
         if records:
             match_info = {
@@ -283,6 +326,10 @@ def list_rooms(
     limit: int = DEFAULT_ROOM_LIMIT,
     offset: int = 0,
 ) -> ListPage[RoomMatch]:
+    prefixed = _split_type_prefix(query) if query else None
+    if prefixed is not None:
+        query = prefixed[0]
+        type = type or prefixed[1]
     query_variants = _compact_variants(query) if query else set()
     matches = [
         _build_room_match(record)
