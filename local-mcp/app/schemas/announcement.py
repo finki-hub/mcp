@@ -48,7 +48,7 @@ class AnnouncementMatch(PrunedModel):
     url: str = Field(
         ...,
         description="Линк до огласот на finki.ukim.mk.",
-        examples=["https://finki.ukim.mk/announcements/prodolzhuvanje-na-rokot/"],
+        examples=["https://finki.ukim.mk/?p=21653"],
     )
     excerpt: str = Field(
         ...,
@@ -98,7 +98,7 @@ class AnnouncementDetail(PrunedModel):
     url: str = Field(
         ...,
         description="Линк до огласот на finki.ukim.mk.",
-        examples=["https://finki.ukim.mk/announcements/prodolzhuvanje-na-rokot/"],
+        examples=["https://finki.ukim.mk/?p=21653"],
     )
     text: str = Field(
         ...,
