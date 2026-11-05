@@ -373,7 +373,7 @@ def test_get_announcement_caps_text(monkeypatch: pytest.MonkeyPatch) -> None:
     assert detail.text.startswith("Ред 0 текст")
     assert detail.title == "Подготвителна настава"
     assert detail.published == date(2026, 9, 4)
-    assert detail.url == "https://finki.ukim.mk/announcements/post-21590/"
+    assert detail.url == "https://finki.ukim.mk/?p=21590"
 
 
 def test_get_announcement_fetches_missing_posts_by_id(

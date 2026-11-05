@@ -5,6 +5,7 @@ import time
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import Final
+from urllib.parse import urlsplit
 
 import httpx
 from pydantic import TypeAdapter
@@ -58,6 +59,12 @@ class AnnouncementSnapshot:
     stale: bool
 
 
+def short_link(link: str, id: int) -> str:
+    """WordPress short link: models copying a long slug drop words and break the link."""
+    parts = urlsplit(link)
+    return f"{parts.scheme}://{parts.netloc}/?p={id}"
+
+
 def _to_record(payload: AnnouncementPayload) -> AnnouncementRecord:
     title = " ".join(html_to_text(payload.title.rendered).split())
     text = html_to_text(payload.content.rendered)
@@ -67,7 +74,7 @@ def _to_record(payload: AnnouncementPayload) -> AnnouncementRecord:
         text=text,
         published=payload.date.date(),
         modified=payload.modified.date(),
-        url=payload.link,
+        url=short_link(payload.link, payload.id),
         title_words=frozenset(normalized_words(title)),
         body_words=frozenset(normalized_words(text)),
     )
