@@ -837,7 +837,7 @@ wheels = [
 
 [[package]]
 name = "posthog"
-version = "7.82.2"
+version = "7.84.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "backoff" },
@@ -845,9 +845,9 @@ dependencies = [
     { name = "requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/80/4b/c900da1426070cfd6d861333a559e9b9b8737641ff98d767c40e7feea48e/posthog-7.82.2.tar.gz", hash = "sha256:301d8f6a2d8f582e86e4e6bb87f60a72ce6173b99eeed4b42d572b6e224432a8", size = 882866, upload-time = "2026-11-02T20:37:34.594Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/df/70/b2c3beb4a17e60bfdd6bcecedd4fd8d9a3519ccc8e5045a96622f497baa5/posthog-7.84.1.tar.gz", hash = "sha256:9222502d1a2d30abb5559590a4952bb18bd2dffdc5efa774ca2c5ddd066681a7", size = 904209, upload-time = "2026-11-05T23:48:54.767Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/86/fb/dda9c0b9a380023bd6ae5cd5ea44090c523ed51b57fed1c90933e45355b0/posthog-7.82.2-py3-none-any.whl", hash = "sha256:f0e1981e2e08580774051466040f4a217f1926cfebf685a77781b39ec0d434b2", size = 1024145, upload-time = "2026-11-02T20:37:32.717Z" },
+    { url = "https://files.pythonhosted.org/packages/b5/ff/e78583912a6c6b21de3098ac4b187967ef82cfb40eb7556f596abad5d6f5/posthog-7.84.1-py3-none-any.whl", hash = "sha256:c8f5f66413e9aa09a7330d45bd00e4c3418dfd45a0d0d830df39d077226b1e5d", size = 1047101, upload-time = "2026-11-05T23:48:52.068Z" },
 ]
 
 [[package]]
