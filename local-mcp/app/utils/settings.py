@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"  # noqa: S104
     PORT: int = 8808
 
-    DATA_STORAGE_URL: str = "https://assets.finki-hub.com"
+    DATA_STORAGE_URL: str = "https://data.finki-hub.com/legacy"
     DIPLOMAS_API_URL: str = "https://bachelors-api.finki-hub.com/diplomas"
     MASTERS_API_URL: str = "https://masters-api.finki-hub.com/masters"
     TIMETABLES_API_URL: str = "https://timetables-api.finki-hub.com"

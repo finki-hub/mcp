@@ -356,7 +356,7 @@ _masters_cache = _StreamedDefenseCache(
 
 def get_courses() -> list[dict]:
     """
-    Fetch courses from R2 storage, returning a cached copy if it is less than
+    Fetch courses from Directus, returning a cached copy if it is less than
     one hour old.
     """
     return _courses_cache.get()
@@ -364,7 +364,7 @@ def get_courses() -> list[dict]:
 
 def get_staff() -> list[dict]:
     """
-    Fetch staff from R2 storage, returning a cached copy if it is less than
+    Fetch staff from Directus, returning a cached copy if it is less than
     one hour old.
     """
     return _staff_cache.get()
@@ -372,7 +372,7 @@ def get_staff() -> list[dict]:
 
 def get_rooms() -> list[dict]:
     """
-    Fetch rooms from R2 storage, returning a cached copy if it is less than
+    Fetch rooms from Directus, returning a cached copy if it is less than
     one hour old.
     """
     return _rooms_cache.get()
@@ -380,7 +380,7 @@ def get_rooms() -> list[dict]:
 
 def get_exam_sessions() -> dict[str, str]:
     """
-    Fetch exam session schedule filenames from R2 storage, returning a cached
+    Fetch exam session schedule filenames from Directus, returning a cached
     copy if it is less than one hour old.
     """
     return _sessions_cache.get()
@@ -388,7 +388,7 @@ def get_exam_sessions() -> dict[str, str]:
 
 def get_anto_quotes() -> list[str]:
     """
-    Fetch Anto quotes from R2 storage, returning a cached copy if it is less
+    Fetch Anto quotes from Directus, returning a cached copy if it is less
     than one hour old.
     """
     return _anto_quotes_cache.get()
