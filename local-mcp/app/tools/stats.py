@@ -12,6 +12,14 @@ from app.utils.http_client import get_directus_items
 
 DEFAULT_STATS_LIMIT = 10
 
+# The options each metric applies.
+_OPTIONS: dict[StatsMetric, set[str]] = {
+    StatsMetric.TOP_COURSES: {"academic_year"},
+    StatsMetric.THESES_PER_YEAR: {"kind", "staff"},
+    StatsMetric.TOP_MENTORS: {"year", "kind"},
+    StatsMetric.TEACHING_LOAD: set(),
+}
+
 _THESIS_TABLES = {
     ThesisKind.BACHELOR: ("bachelor_theses", "bachelor_thesis_staff"),
     ThesisKind.MASTER: ("master_theses", "master_thesis_staff"),
@@ -21,7 +29,7 @@ _THESIS_TABLES = {
 def _number(value: object) -> int:
     # Directus returns aggregates as strings (or null for an empty group).
     try:
-        return int(str(value))
+        return round(float(str(value)))
     except TypeError, ValueError:
         return 0
 
@@ -36,7 +44,7 @@ def _ranked(rows: list[StatRow], limit: int) -> tuple[int, list[StatRow]]:
     return len(ordered), ordered[:limit]
 
 
-def _latest_enrolled_year() -> str | None:
+def _enrolled_years() -> list[str]:
     # The newest academic year with any enrollment counted: the current one
     # has none until its Moodle snapshot is imported.
     rows = get_directus_items(
@@ -50,19 +58,28 @@ def _latest_enrolled_year() -> str | None:
             {"fields": "id,label", "limit": -1},
         )
     }
-    years = [
-        labels[row["academic_year"]]
-        for row in rows
-        if row.get("academic_year") in labels
-        and _number((row.get("sum") or {}).get("count")) > 0
-    ]
-    return max(years) if years else None
+    return sorted(
+        (
+            labels[row["academic_year"]]
+            for row in rows
+            if row.get("academic_year") in labels
+            and _number((row.get("sum") or {}).get("count")) > 0
+        ),
+        reverse=True,
+    )
 
 
 def _top_courses(academic_year: str | None, limit: int) -> Stats:
-    year = academic_year or _latest_enrolled_year()
-    if year is None:
+    years = _enrolled_years()
+    if not years:
         return Stats(metric=StatsMetric.TOP_COURSES, error="Нема податоци за запишани.")
+    if academic_year is not None and academic_year not in years:
+        return Stats(
+            metric=StatsMetric.TOP_COURSES,
+            error=f"Нема запишани за академската година {academic_year}.",
+            suggestions=years[:5],
+        )
+    year = academic_year or years[0]
     rows = get_directus_items(
         "course_enrollments",
         {
@@ -206,6 +223,22 @@ def stats(
     staff: str | None = None,
     limit: int = DEFAULT_STATS_LIMIT,
 ) -> Stats:
+    given = {
+        name
+        for name, value in (
+            ("academic_year", academic_year),
+            ("year", year),
+            ("kind", kind),
+            ("staff", staff.strip() if staff else None),
+        )
+        if value
+    }
+    if unused := sorted(given - _OPTIONS[metric]):
+        # A filter the metric cannot apply would look applied in the answer.
+        return Stats(
+            metric=metric,
+            error=f"{metric.value} не прима: {', '.join(unused)}.",
+        )
     if metric == StatsMetric.TOP_COURSES:
         return _top_courses(academic_year, limit)
     if metric == StatsMetric.TOP_MENTORS:

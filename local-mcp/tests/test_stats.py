@@ -119,6 +119,21 @@ def test_teaching_load_in_the_current_timetable() -> None:
     ]
 
 
+def test_an_option_the_metric_cannot_apply_is_an_error() -> None:
+    assert stats(StatsMetric.TOP_MENTORS, staff="Весна Димитрова").error == (
+        "top_mentors не прима: staff."
+    )
+    assert stats(StatsMetric.THESES_PER_YEAR, year=2024).error
+    assert stats(StatsMetric.TEACHING_LOAD, kind=ThesisKind.MASTER).error
+
+
+def test_a_year_without_enrollments_suggests_the_years_with_them() -> None:
+    result = stats(StatsMetric.TOP_COURSES, academic_year="2030/2031")
+
+    assert result.error
+    assert result.suggestions == ["2025/2026"]
+
+
 def test_unknown_staff_member() -> None:
     result = stats(StatsMetric.THESES_PER_YEAR, staff="Непознат Човек")
 
