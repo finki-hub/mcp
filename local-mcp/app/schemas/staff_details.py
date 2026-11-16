@@ -55,7 +55,7 @@ class StaffTheses(PrunedModel):
     master: ThesisRoleCounts = Field(..., description="Магистерски трудови по улога")
     recent_mentored: list[MentoredThesis] | None = Field(
         None,
-        description="Најновите трудови каде е ментор (до 5); целосно со `list_diplomas`/`list_masters`",
+        description="Најновите трудови каде е ментор (до 5); целосно со `find_theses`",
     )
 
 

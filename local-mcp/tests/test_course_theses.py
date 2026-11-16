@@ -93,6 +93,7 @@ _BACHELOR = [
     {
         "id": 1,
         "title": "Блокчејн и паметни договори",
+        "student_index": "0201010",
         "student_name": "Ана Анова",
         "mentor": "Весна Димитрова",
         "year": 2025,
@@ -140,9 +141,27 @@ def _items(collection: str, params: dict[str, str | int]) -> list[dict]:
             else []
         )
     if collection == "course_teaching":
+        summer = {"id": 3, "title": "leten-2025-26", "date_from": "2026-02-23"}
+        winter = {"id": 5, "title": "zimski-2025-26", "date_from": "2025-10-04"}
         return [
-            {"role": "assistant", "periods": 2, "staff": {"name": "Ана Тодоровска"}},
-            {"role": "professor", "periods": 2, "staff": {"name": "Ристе Стојанов"}},
+            {
+                "role": "assistant",
+                "periods": 2,
+                "staff": {"name": "Ана Тодоровска"},
+                "timetable": summer,
+            },
+            {
+                "role": "professor",
+                "periods": 2,
+                "staff": {"name": "Ристе Стојанов"},
+                "timetable": summer,
+            },
+            {
+                "role": "professor",
+                "periods": 2,
+                "staff": {"name": "Стар Наставник"},
+                "timetable": winter,
+            },
         ]
     return {
         "bachelor_theses": _BACHELOR,
@@ -194,10 +213,11 @@ def test_course_syllabus_equivalencies_and_enrollments() -> None:
     assert course.enrollments == {"2026/2027": 468, "2025/2026": 877}
 
 
-def test_course_teaching_lists_professors_first() -> None:
+def test_course_teaching_comes_from_the_latest_timetable_it_is_in() -> None:
     course = get_course("АПС", [CourseInclude.TEACHING])
 
-    assert course.timetable == "raspored"
+    assert course.teaching_timetable == "leten-2025-26"
+    assert course.timetable is None
     assert [t.staff for t in course.teaching or []] == [
         "Ристе Стојанов",
         "Ана Тодоровска",
@@ -247,6 +267,29 @@ def test_theses_limit_reports_truncation() -> None:
     assert result.total == 2
     assert result.truncated is True
     assert [t.title for t in result.items or []] == ["Криптографски хеш функции"]
+
+
+def test_theses_by_student_index_or_name() -> None:
+    by_index = find_theses(student="201010")
+    by_name = find_theses(student="anova ana")
+
+    assert [t.title for t in by_index.items or []] == ["Блокчејн и паметни договори"]
+    assert (by_index.items or [])[0].student_index == "0201010"
+    assert [t.title for t in by_name.items or []] == ["Блокчејн и паметни договори"]
+
+
+def test_student_name_words_must_start_name_words() -> None:
+    # "ов" is inside "Стојанов" and "Боров" but starts neither name word.
+    assert [t.student for t in find_theses(student="ана").items or []] == ["Ана Анова"]
+    assert [t.student for t in find_theses(student="бор").items or []] == [
+        "Борис Боров"
+    ]
+
+
+def test_misspelt_student_name_falls_back_to_fuzzy() -> None:
+    result = find_theses(student="Борис Боорв")
+
+    assert [t.student for t in result.items or []] == ["Борис Боров"]
 
 
 def test_theses_need_a_filter_and_role_needs_staff() -> None:

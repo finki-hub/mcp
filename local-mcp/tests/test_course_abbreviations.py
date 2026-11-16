@@ -1,7 +1,9 @@
 import pytest
 
 from app.tools import course as course_tools
-from app.tools.course import get_course_data, get_course_staff, list_courses
+from app.tools import directus_lookup
+from app.tools.course import list_courses
+from app.tools.directus_lookup import find_course
 from app.utils.abbreviation_matcher import (
     build_abbreviation_index,
     resolve_abbreviation,
@@ -34,9 +36,19 @@ _COURSES = [
 ]
 
 
+_DIRECTUS_COURSES = [
+    {"id": index, "name_en": None, **course} for index, course in enumerate(_COURSES)
+]
+
+
 @pytest.fixture(autouse=True)
 def _courses(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(course_tools, "get_courses", lambda: _COURSES)
+    monkeypatch.setattr(
+        directus_lookup,
+        "get_directus_items",
+        lambda _collection, _params: _DIRECTUS_COURSES,
+    )
 
 
 def _resolve(query: str) -> list[str]:
@@ -81,57 +93,45 @@ def test_unknown_abbreviation_and_names_do_not_match() -> None:
     assert _resolve("Структурно Програмирање") == []
 
 
-def test_course_data_by_abbreviation() -> None:
-    result = get_course_data("ПАПС")
-    assert result.name == "Примена на алгоритми и податочни структури"
-    assert result.abbreviation == "ПАПС"
-    assert result.error is None
-    assert result.match_info == {
-        "original_query": "ПАПС",
-        "matched_course": "Примена на алгоритми и податочни структури",
-        "similarity_score": 100,
-        "match_type": "abbreviation",
-    }
+def test_course_by_its_abbreviation() -> None:
+    found = find_course("ПАПС")
+
+    assert found.record is not None
+    assert found.record["name"] == "Примена на алгоритми и податочни структури"
 
 
-def test_short_abbreviation_bypasses_min_length() -> None:
-    result = get_course_staff("БП")
-    assert result.name == "Бази на податоци"
-    assert result.abbreviation == "БнП"
-    assert result.match_info is not None
-    assert result.match_info["match_type"] == "abbreviation"
+def test_derived_abbreviation() -> None:
+    found = find_course("БП")
+
+    assert found.record is not None
+    assert found.record["name"] == "Бази на податоци"
 
 
-def test_ambiguous_abbreviation_returns_suggestions() -> None:
-    result = get_course_data("СП")
-    assert result.error == "Повеќе предмети одговараат на „СП“"
-    assert result.suggestions == ["Самостоен проект", "Структурно програмирање"]
-    assert result.match_info is None
+def test_shared_abbreviation_returns_suggestions() -> None:
+    found = find_course("СП")
+
+    assert found.record is None
+    assert found.error == "Повеќе предмети одговараат на „СП“"
+    assert found.suggestions == ["Самостоен проект", "Структурно програмирање"]
 
 
-def test_unknown_abbreviation_falls_back_to_existing_behavior() -> None:
-    short = get_course_data("ЏЏ")
+def test_unknown_short_and_long_queries() -> None:
+    short = find_course("ЏЏ")
     assert short.error is not None
-    assert short.error.startswith("Барањето е прекратко")
+    assert short.error.startswith("Барањето „ЏЏ“ е прекратко")
 
-    missing = get_course_data("ЏЏЏЏ")
-    assert missing.error == "Предметот „ЏЏЏЏ“ не е пронајден"
+    assert find_course("ЏЏЏЏ").record is None
 
 
-def test_full_name_still_matches() -> None:
-    exact = get_course_data("Бази на податоци")
-    assert exact.name == "Бази на податоци"
-    assert exact.abbreviation == "БнП"
-    assert exact.match_info is not None
-    assert exact.match_info["match_type"] == "exact"
-
-    capitalized = get_course_data("Структурно Програмирање")
-    assert capitalized.name == "Структурно програмирање"
-    assert capitalized.match_info is not None
-    assert capitalized.match_info["match_type"] == "exact"
-
-    latin = get_course_data("veb programiranje")
-    assert latin.name == "Веб програмирање"
+def test_full_name_matches_in_any_case_and_script() -> None:
+    for query, name in (
+        ("Бази на податоци", "Бази на податоци"),
+        ("Структурно Програмирање", "Структурно програмирање"),
+        ("veb programiranje", "Веб програмирање"),
+    ):
+        found = find_course(query)
+        assert found.record is not None
+        assert found.record["name"] == name
 
 
 def test_list_courses_includes_abbreviation() -> None:

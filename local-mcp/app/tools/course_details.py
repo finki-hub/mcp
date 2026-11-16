@@ -101,16 +101,29 @@ def _enrollments(record: dict) -> dict[str, int] | None:
     return dict(sorted(counts.items(), reverse=True)) or None
 
 
-def _teaching(course_id: int, timetable_id: int) -> list[CourseTeacher]:
+def _teaching(course_id: int) -> tuple[str | None, list[CourseTeacher]]:
+    # The latest main timetable the course is taught in: a summer course
+    # keeps its summer staff through the winter.
     rows = get_directus_items(
         "course_teaching",
         {
-            "fields": "role,periods,staff.name",
+            "fields": "role,periods,staff.name,timetable.id,timetable.title,timetable.date_from",
             "filter[course][_eq]": course_id,
-            "filter[timetable][_eq]": timetable_id,
             "limit": -1,
         },
     )
+    timetables = [
+        row["timetable"] for row in rows if isinstance(row.get("timetable"), dict)
+    ]
+    if not timetables:
+        return None, []
+    latest = max(timetables, key=lambda timetable: timetable.get("date_from") or "")
+    rows = [
+        row
+        for row in rows
+        if isinstance(row.get("timetable"), dict)
+        and row["timetable"]["id"] == latest["id"]
+    ]
     teachers = [
         CourseTeacher(
             staff=row["staff"]["name"], role=row["role"], periods=row["periods"]
@@ -119,7 +132,10 @@ def _teaching(course_id: int, timetable_id: int) -> list[CourseTeacher]:
         if isinstance(row.get("staff"), dict)
     ]
     # Professors first, then by name.
-    return sorted(teachers, key=lambda row: (row.role != "professor", row.staff))
+    return latest["title"], sorted(
+        teachers,
+        key=lambda row: (row.role != "professor", row.staff),
+    )
 
 
 def get_course(
@@ -159,18 +175,18 @@ def get_course(
         details.equivalencies = _equivalencies(record)
     if CourseInclude.ENROLLMENTS in wanted:
         details.enrollments = _enrollments(record)
-    if wanted & {CourseInclude.TEACHING, CourseInclude.SCHEDULE}:
+    if CourseInclude.TEACHING in wanted:
+        details.teaching_timetable, teachers = _teaching(record["id"])
+        details.teaching = teachers or None
+    if CourseInclude.SCHEDULE in wanted:
         timetable = current_timetable()
         if timetable is not None:
             details.timetable = timetable["title"]
-            if CourseInclude.TEACHING in wanted:
-                details.teaching = _teaching(record["id"], timetable["id"])
-            if CourseInclude.SCHEDULE in wanted:
-                details.schedule = sorted_entries(
-                    [
-                        slot
-                        for slot in timetable_slots(timetable["id"])
-                        if (slot.get("course") or {}).get("id") == record["id"]
-                    ],
-                )
+            details.schedule = sorted_entries(
+                [
+                    slot
+                    for slot in timetable_slots(timetable["id"])
+                    if (slot.get("course") or {}).get("id") == record["id"]
+                ],
+            )
     return details

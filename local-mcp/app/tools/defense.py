@@ -64,25 +64,11 @@ type DefenseLookupOutcome[RecordT: DefenseRecord] = (
 )
 
 
-def strip_list_filter(value: str | None) -> str | None:
-    if value is None:
-        return None
-    stripped = value.strip()
-    return stripped or None
-
-
 def parse_student_filter(value: str) -> StudentFilter:
     stripped = value.strip()
     if _INDEX_PATTERN.fullmatch(stripped) is not None:
         return StudentIndexFilter(stripped.lstrip("0") or "0")
     return StudentNameFilter(stripped)
-
-
-def parse_optional_student_filter(value: str | None) -> StudentFilter | None:
-    stripped = strip_list_filter(value)
-    if stripped is None:
-        return None
-    return parse_student_filter(stripped)
 
 
 def collapse_defense_records[RecordT: DefenseRecord](
@@ -107,25 +93,6 @@ def collapse_defense_records[RecordT: DefenseRecord](
                 chosen_date = parsed_date
         selected.append(chosen)
     return selected
-
-
-def filter_defense_records[RecordT: DefenseRecord](
-    records: Sequence[RecordT],
-    *,
-    student: StudentFilter | None = None,
-    mentor: str | None = None,
-    title: str | None = None,
-) -> list[RecordT]:
-    candidates = list(records)
-    if student is not None:
-        candidates = _filter_student(candidates, student)
-    mentor_query = strip_list_filter(mentor)
-    if mentor_query is not None:
-        candidates = _filter_grouped(candidates, mentor_query, lambda row: row.mentor)
-    title_query = strip_list_filter(title)
-    if title_query is not None:
-        candidates = _filter_titles(candidates, title_query)
-    return candidates
 
 
 def to_defense_matches(records: Sequence[DefenseRecord]) -> list[DefenseMatch]:
@@ -183,74 +150,8 @@ def _representatives[RecordT: DefenseRecord](
     return list(representatives.values())
 
 
-def _resolved_normalizations[RecordT: DefenseRecord](
-    records: Sequence[RecordT],
-    query: str,
-    getter: Callable[[RecordT], str],
-) -> set[str]:
-    resolution = resolve_query(query, _representatives(records, getter))
-    match = resolution["match"]
-    if match is not None:
-        return {transliterate_and_normalize(match)}
-    if resolution["match_type"] == "ambiguous":
-        return {
-            transliterate_and_normalize(candidate)
-            for candidate in resolution["candidates"]
-        }
-    return set()
-
-
-def _filter_grouped[RecordT: DefenseRecord](
-    records: Sequence[RecordT],
-    query: str,
-    getter: Callable[[RecordT], str],
-) -> list[RecordT]:
-    selected = _resolved_normalizations(records, query, getter)
-    return [
-        record
-        for record in records
-        if transliterate_and_normalize(getter(record)) in selected
-    ]
-
-
 def _student_name(record: DefenseRecord) -> str:
     return parse_upstream_student(record.student).name
-
-
-def _filter_student[RecordT: DefenseRecord](
-    records: Sequence[RecordT],
-    student: StudentFilter,
-) -> list[RecordT]:
-    match student:
-        case StudentIndexFilter(canonical_index=index):
-            return [
-                row
-                for row in records
-                if parse_upstream_student(row.student).canonical_index == index
-            ]
-        case StudentNameFilter(name=name):
-            return _filter_grouped(records, name, _student_name)
-        case unreachable:
-            assert_never(unreachable)
-
-
-def _filter_titles[RecordT: DefenseRecord](
-    records: Sequence[RecordT],
-    query: str,
-) -> list[RecordT]:
-    normalized_query = transliterate_and_normalize(query)
-    substring_groups = {
-        transliterate_and_normalize(representative)
-        for representative in _representatives(records, lambda row: row.title)
-        if normalized_query in transliterate_and_normalize(representative)
-    }
-    if substring_groups:
-        return [
-            row
-            for row in records
-            if transliterate_and_normalize(row.title) in substring_groups
-        ]
-    return _filter_grouped(records, query, lambda row: row.title)
 
 
 def _resolve_name_lookup[RecordT: DefenseRecord](

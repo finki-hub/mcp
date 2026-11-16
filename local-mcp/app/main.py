@@ -15,23 +15,19 @@ from app.schemas.anto import AntoQuote
 from app.schemas.base import ListPage
 from app.schemas.course import (
     AccreditationYear,
-    Course,
     CourseList,
-    CourseParticipants,
-    CourseStaff,
     CourseStatus,
     CourseTag,
     SemesterType,
     StudyProgram,
 )
 from app.schemas.course_details import CourseDetails, CourseInclude
-from app.schemas.defense import DefenseMatch, DiplomaResult, MasterResult
+from app.schemas.defense import DiplomaResult, MasterResult
 from app.schemas.room import RoomData, RoomLocation, RoomMatch, RoomType
 from app.schemas.schedule import Schedule
 from app.schemas.session import ExamSessionScheduleFile
 from app.schemas.staff import (
     StaffMatch,
-    StaffMember,
     StaffPosition,
     StaffTitle,
 )
@@ -49,18 +45,15 @@ from app.tools.announcement import get_announcement, search_announcements
 from app.tools.anto import get_random_anto_quote
 from app.tools.course import (
     DEFAULT_COURSE_LIMIT,
-    get_course_data,
-    get_course_participants,
-    get_course_staff,
     list_courses,
 )
 from app.tools.course_details import get_course
-from app.tools.diploma import get_diploma, list_diplomas
-from app.tools.master import get_master, list_masters
+from app.tools.diploma import get_diploma
+from app.tools.master import get_master
 from app.tools.room import DEFAULT_ROOM_LIMIT, get_room_data, list_rooms
 from app.tools.schedule import schedule
 from app.tools.session import DEFAULT_SESSION_LIMIT, list_exam_session_schedules
-from app.tools.staff import get_staff_member, list_staff
+from app.tools.staff import list_staff
 from app.tools.staff_details import get_staff
 from app.tools.study_program import list_study_programs
 from app.tools.thesis_search import DEFAULT_THESIS_LIMIT, find_theses
@@ -374,7 +367,9 @@ def make_app(settings: Settings) -> MCPServer:
         description=(
             "Враќа термини од распоред што ги задоволуваат зададените ID филтри "
             "(комбинирани со И). Мора да биде зададен барем еден од `group_id`, "
-            "`professor_id`, `room_id` или `course_id`; инаку враќа празна листа."
+            "`professor_id`, `room_id` или `course_id`; инаку враќа празна листа. "
+            "За тековниот распоред по име користи `schedule`; оваа е за постари "
+            "и прво-неделни распореди."
         ),
         annotations=ToolAnnotations(
             title="Термини од распоред по ID филтри",
@@ -482,9 +477,9 @@ def make_app(settings: Settings) -> MCPServer:
             "совпаднатите акредитации се прикажуваат со семестар. Филтрите за број на "
             "запишани студенти (`min_participants`, `max_participants`, "
             "`sort_by_participants`) додаваат број на запишани по предмет, така што "
-            "не е потребно `get_course_participants` за секој предмет. Резултатот е "
+            "не е потребно `get_course` за секој предмет. Резултатот е "
             "ограничен со `limit`; ако `truncated` е true, стесни ги филтрите или "
-            "користи `offset`. Детали за предмет: `get_course_data`."
+            "користи `offset`. Детали за предмет: `get_course`."
         ),
         annotations=ToolAnnotations(
             title="Листа на предмети по филтри",
@@ -638,98 +633,6 @@ def make_app(settings: Settings) -> MCPServer:
                 offset=offset,
             )
         )
-
-    @mcp.tool(
-        name="get_course_data",
-        description=(
-            "Враќа општи податоци за предмет: ознаки, Discord канал и податоци по "
-            "акредитација (код, ниво, семестар, кредити, предуслов, статус по студиска "
-            "програма)."
-        ),
-        annotations=ToolAnnotations(
-            title="Општи податоци за предмет",
-            destructiveHint=False,
-            idempotentHint=True,
-            openWorldHint=True,
-            readOnlyHint=True,
-        ),
-    )
-    @track_tool("get_course_data")
-    async def get_course_data_tool(
-        course_name: Annotated[
-            str,
-            Field(
-                description=(
-                    "Име или кратенка на предметот (на пр. „АПС“, „БнП“, „paps“). "
-                    "Кратенките се проверуваат прво; совпаѓањето на името е толерантно "
-                    "(fuzzy) и поддржува латиница. Ако кратенката припаѓа на повеќе "
-                    "предмети или нема точно совпаѓање, враќа предлози."
-                ),
-                examples=["Веб програмирање", "veb programiranje", "АПС"],
-            ),
-        ],
-    ) -> Course:
-        return get_course_data(course_name)
-
-    @mcp.tool(
-        name="get_course_staff",
-        description="Враќа наставен кадар (професори и асистенти) за предмет.",
-        annotations=ToolAnnotations(
-            title="Наставен кадар за предмет",
-            destructiveHint=False,
-            idempotentHint=True,
-            openWorldHint=True,
-            readOnlyHint=True,
-        ),
-    )
-    @track_tool("get_course_staff")
-    async def get_course_staff_tool(
-        course_name: Annotated[
-            str,
-            Field(
-                description=(
-                    "Име или кратенка на предметот (на пр. „АПС“, „БнП“, „paps“). "
-                    "Кратенките се проверуваат прво; совпаѓањето на името е толерантно "
-                    "(fuzzy) и поддржува латиница. Ако кратенката припаѓа на повеќе "
-                    "предмети или нема точно совпаѓање, враќа предлози."
-                ),
-                examples=["Веб програмирање", "veb programiranje", "АПС"],
-            ),
-        ],
-    ) -> CourseStaff:
-        return get_course_staff(course_name)
-
-    @mcp.tool(
-        name="get_course_participants",
-        description=(
-            "Враќа број на запишани студенти по академска година за еден предмет. За "
-            "повеќе предмети (на пр. предмети со 5 до 15 запишани) користи "
-            "`list_courses` со `min_participants`/`max_participants` во еден повик."
-        ),
-        annotations=ToolAnnotations(
-            title="Запишани студенти по предмет",
-            destructiveHint=False,
-            idempotentHint=True,
-            openWorldHint=True,
-            readOnlyHint=True,
-        ),
-    )
-    @track_tool("get_course_participants")
-    async def get_course_participants_tool(
-        course_name: Annotated[
-            str,
-            Field(
-                description=(
-                    "Име или кратенка на предметот (на пр. „АПС“, „БнП“, „paps“). "
-                    "Кратенките се проверуваат прво; совпаѓањето на името е толерантно "
-                    "(fuzzy) и поддржува латиница. Ако кратенката припаѓа на повеќе "
-                    "предмети или нема точно совпаѓање, враќа предлози."
-                ),
-                examples=["Веб програмирање", "veb programiranje", "АПС"],
-            ),
-        ],
-    ) -> CourseParticipants:
-        return get_course_participants(course_name)
 
     @mcp.tool(
         name="list_study_programs",
@@ -945,35 +848,6 @@ def make_app(settings: Settings) -> MCPServer:
         return list_staff(active=active, title=title, position=position)
 
     @mcp.tool(
-        name="get_staff_member",
-        description=(
-            "Враќа сите податоци за вработен: титула, звање, активност, е-пошта, "
-            "кабинет и линкови до ФИНКИ профилот, Courses профилот и консултации."
-        ),
-        annotations=ToolAnnotations(
-            title="Податоци за вработен",
-            destructiveHint=False,
-            idempotentHint=True,
-            openWorldHint=True,
-            readOnlyHint=True,
-        ),
-    )
-    @track_tool("get_staff_member")
-    async def get_staff_member_tool(
-        name: Annotated[
-            str,
-            Field(
-                description=(
-                    "Име на вработениот. Совпаѓањето на името е толерантно (fuzzy) и "
-                    "поддржува латиница; ако нема точно совпаѓање, враќа предлози."
-                ),
-                examples=["Александар Стојменски", "aleksandar stojmenski"],
-            ),
-        ],
-    ) -> StaffMember:
-        return get_staff_member(name)
-
-    @mcp.tool(
         name="get_staff",
         description=(
             "Враќа вработен од FINKI Hub (Directus): титула, звање, е-пошта, кабинет и "
@@ -1022,8 +896,9 @@ def make_app(settings: Settings) -> MCPServer:
             "а со `include` и: `curricula` (код, семестар, кредити, предуслови и "
             "статус по програма во секоја акредитација), `syllabus` (цели и содржина "
             "по недели), `equivalencies` (еквивалентни предмети низ акредитациите), "
-            "`enrollments` (запишани по година), `teaching` (наставници во најновиот "
-            "распоред) и `schedule` (термини). Вклучи само што ти треба."
+            "`enrollments` (запишани по година), `teaching` (наставници од најновиот "
+            "распоред во кој се држи) и `schedule` (термини во тековниот распоред). "
+            "Вклучи само што ти треба."
         ),
         annotations=ToolAnnotations(
             title="Предмет со акредитации, силабус и наставници",
@@ -1063,9 +938,10 @@ def make_app(settings: Settings) -> MCPServer:
     @mcp.tool(
         name="find_theses",
         description=(
-            "Пребарува дипломски и магистерски трудови (Directus) по вработен во "
-            "комисијата и неговата улога (ментор, член, претседател), година и дел "
-            "од насловот; најновите прво. Потребен е вработен, година, вид или наслов. "
+            "Пребарува дипломски и магистерски трудови (Directus) по студент (име "
+            "или индекс), вработен во комисијата и неговата улога (ментор, член, "
+            "претседател), година и дел од насловот; најновите прво. Потребен е "
+            "барем еден филтер. "
             "За целосни податоци за еден труд користи `get_diploma`/`get_master`."
         ),
         annotations=ToolAnnotations(
@@ -1083,6 +959,15 @@ def make_app(settings: Settings) -> MCPServer:
             str | None,
             Field(
                 description="Име на вработен во комисијата (ментор или член).",
+                max_length=256,
+            ),
+        ] = None,
+        student: Annotated[
+            str | None,
+            Field(
+                description=(
+                    "Студент: број на индекс или име (сите зборови, и на латиница)."
+                ),
                 max_length=256,
             ),
         ] = None,
@@ -1121,6 +1006,7 @@ def make_app(settings: Settings) -> MCPServer:
             lambda: find_theses(
                 kind=kind,
                 staff=staff,
+                student=student,
                 role=role,
                 year=year,
                 query=query,
@@ -1183,53 +1069,6 @@ def make_app(settings: Settings) -> MCPServer:
         return compact_result(result)
 
     @mcp.tool(
-        name="list_diplomas",
-        description=(
-            "Враќа до 20 дипломски работи по студент, ментор или наслов. Потребен е "
-            "барем еден непразен филтер; при пребарување со број на индекс не се "
-            "задаваат други филтри, а другите филтри се комбинираат со И."
-        ),
-        annotations=ToolAnnotations(
-            title="Листа на дипломски работи",
-            destructiveHint=False,
-            idempotentHint=True,
-            openWorldHint=True,
-            readOnlyHint=True,
-        ),
-    )
-    @track_tool("list_diplomas")
-    async def list_diplomas_tool(
-        student: Annotated[
-            str | None,
-            Field(
-                description=(
-                    "Име на студент или број на индекс; името поддржува толерантно "
-                    "совпаѓање и латиница, а пребарувањето со број на индекс не се "
-                    "комбинира со други филтри."
-                ),
-                max_length=256,
-            ),
-        ] = None,
-        mentor: Annotated[
-            str | None,
-            Field(
-                description="Име на менторот; поддржува толерантно совпаѓање и латиница.",
-                max_length=256,
-            ),
-        ] = None,
-        title: Annotated[
-            str | None,
-            Field(
-                description="Наслов или дел од насловот на дипломската работа.",
-                max_length=1024,
-            ),
-        ] = None,
-    ) -> list[DefenseMatch]:
-        return await anyio.to_thread.run_sync(
-            lambda: list_diplomas(student=student, mentor=mentor, title=title),
-        )
-
-    @mcp.tool(
         name="get_diploma",
         description=(
             "Враќа податоци за дипломска работа по име на студент или број на индекс. "
@@ -1257,53 +1096,6 @@ def make_app(settings: Settings) -> MCPServer:
         ],
     ) -> DiplomaResult:
         return await anyio.to_thread.run_sync(get_diploma, student)
-
-    @mcp.tool(
-        name="list_masters",
-        description=(
-            "Враќа до 20 магистерски трудови по студент, ментор или наслов. Потребен "
-            "е барем еден непразен филтер; при пребарување со број на индекс не се "
-            "задаваат други филтри, а другите филтри се комбинираат со И."
-        ),
-        annotations=ToolAnnotations(
-            title="Листа на магистерски трудови",
-            destructiveHint=False,
-            idempotentHint=True,
-            openWorldHint=True,
-            readOnlyHint=True,
-        ),
-    )
-    @track_tool("list_masters")
-    async def list_masters_tool(
-        student: Annotated[
-            str | None,
-            Field(
-                description=(
-                    "Име на студент или број на индекс; името поддржува толерантно "
-                    "совпаѓање и латиница, а пребарувањето со број на индекс не се "
-                    "комбинира со други филтри."
-                ),
-                max_length=256,
-            ),
-        ] = None,
-        mentor: Annotated[
-            str | None,
-            Field(
-                description="Име на менторот; поддржува толерантно совпаѓање и латиница.",
-                max_length=256,
-            ),
-        ] = None,
-        title: Annotated[
-            str | None,
-            Field(
-                description="Наслов или дел од насловот на магистерскиот труд.",
-                max_length=1024,
-            ),
-        ] = None,
-    ) -> list[DefenseMatch]:
-        return await anyio.to_thread.run_sync(
-            lambda: list_masters(student=student, mentor=mentor, title=title),
-        )
 
     @mcp.tool(
         name="get_master",
