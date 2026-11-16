@@ -32,6 +32,7 @@ from app.schemas.staff import (
     StaffTitle,
 )
 from app.schemas.staff_details import StaffDetails, StaffInclude
+from app.schemas.stats import Stats, StatsMetric
 from app.schemas.study_program import StudyCycle, StudyProgramInfo
 from app.schemas.thesis_search import ThesisKind, ThesisRole, ThesisSearch
 from app.schemas.timetable import (
@@ -55,6 +56,7 @@ from app.tools.schedule import schedule
 from app.tools.session import DEFAULT_SESSION_LIMIT, list_exam_session_schedules
 from app.tools.staff import list_staff
 from app.tools.staff_details import get_staff
+from app.tools.stats import DEFAULT_STATS_LIMIT, stats
 from app.tools.study_program import list_study_programs
 from app.tools.thesis_search import DEFAULT_THESIS_LIMIT, find_theses
 from app.tools.timetable import (
@@ -1010,6 +1012,74 @@ def make_app(settings: Settings) -> MCPServer:
                 role=role,
                 year=year,
                 query=query,
+                limit=limit,
+            ),
+        )
+        return compact_result(result)
+
+    @mcp.tool(
+        name="stats",
+        description=(
+            "Враќа статистика од FINKI Hub (Directus) како подредени редови: "
+            "`top_courses` (предмети со најмногу запишани во академска година; "
+            "стандардно најновата со податоци), `theses_per_year` (трудови по година, "
+            "дипломски и магистерски; со `staff` неговите менторства), `top_mentors` "
+            "(најмногу менторства, по `year` и `kind`) и `teaching_load` (неделни "
+            "часови и број на предмети по наставник во тековниот распоред)."
+        ),
+        annotations=ToolAnnotations(
+            title="Статистика: запишани, трудови, менторства, оптоварување",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("stats")
+    async def stats_tool(
+        metric: Annotated[
+            StatsMetric,
+            Field(
+                description=(
+                    "top_courses, theses_per_year, top_mentors или teaching_load."
+                ),
+            ),
+        ],
+        *,
+        academic_year: Annotated[
+            str | None,
+            Field(
+                description="Академска година за `top_courses`, на пр. „2025/2026“.",
+                pattern=r"^\d{4}/\d{4}$",
+            ),
+        ] = None,
+        year: Annotated[
+            int | None,
+            Field(description="Година за `top_mentors`.", ge=2000, le=2100),
+        ] = None,
+        kind: Annotated[
+            ThesisKind | None,
+            Field(description="bachelor или master за трудовите; стандардно двата."),
+        ] = None,
+        staff: Annotated[
+            str | None,
+            Field(
+                description="Вработен за `theses_per_year` (неговите менторства).",
+                max_length=256,
+            ),
+        ] = None,
+        limit: Annotated[
+            int,
+            Field(description="Најмногу редови.", ge=1, le=50),
+        ] = DEFAULT_STATS_LIMIT,
+    ) -> Annotated[CallToolResult, Stats]:
+        result = await anyio.to_thread.run_sync(
+            lambda: stats(
+                metric,
+                academic_year=academic_year,
+                year=year,
+                kind=kind,
+                staff=staff,
                 limit=limit,
             ),
         )
