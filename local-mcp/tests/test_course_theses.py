@@ -278,6 +278,20 @@ def test_theses_by_student_index_or_name() -> None:
     assert [t.title for t in by_name.items or []] == ["Блокчејн и паметни договори"]
 
 
+def test_student_name_words_must_start_name_words() -> None:
+    # "ов" is inside "Стојанов" and "Боров" but starts neither name word.
+    assert [t.student for t in find_theses(student="ана").items or []] == ["Ана Анова"]
+    assert [t.student for t in find_theses(student="бор").items or []] == [
+        "Борис Боров"
+    ]
+
+
+def test_misspelt_student_name_falls_back_to_fuzzy() -> None:
+    result = find_theses(student="Борис Боорв")
+
+    assert [t.student for t in result.items or []] == ["Борис Боров"]
+
+
 def test_theses_need_a_filter_and_role_needs_staff() -> None:
     assert find_theses().error
     assert find_theses(role=ThesisRole.MENTOR, year=2025).error

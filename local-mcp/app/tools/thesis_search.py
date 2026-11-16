@@ -8,7 +8,7 @@ from app.schemas.thesis_search import (
 )
 from app.tools.directus_lookup import find_staff
 from app.utils.http_client import get_directus_items
-from app.utils.query_matcher import transliterate_and_normalize
+from app.utils.query_matcher import resolve_query, transliterate_and_normalize
 
 # Bachelor's and master's theses from Directus, searched by any staff member
 # of the committee (each name matched to staff by the thesis import), role,
@@ -68,20 +68,39 @@ def _match(kind: ThesisKind, thesis: dict, role: ThesisRole | None) -> ThesisMat
     )
 
 
-def _student_matcher(student: str | None) -> Callable[[dict], bool]:
+def _names_starting_with(words: list[str], names: set[str]) -> set[str]:
+    # Every query word starts a word of the name, in any order: "ana an"
+    # finds "Ана Анова" but "ана" does not find "Маријана".
+    accepted: set[str] = set()
+    for name in names:
+        tokens = transliterate_and_normalize(name).split()
+        if all(any(token.startswith(word) for token in tokens) for word in words):
+            accepted.add(name)
+    return accepted
+
+
+def _student_matcher(
+    student: str | None,
+    theses: list[dict],
+) -> Callable[[dict], bool]:
     if student is None:
         return lambda _thesis: True
-    if student.isdigit():
+    if student.isascii() and student.isdigit():
         # An index number, leading zeros aside.
         index = student.lstrip("0") or "0"
         return lambda thesis: (
             (str(thesis.get("student_index") or "").lstrip("0") or "0") == index
         )
-    words = transliterate_and_normalize(student).split()
-    return lambda thesis: all(
-        word in transliterate_and_normalize(thesis.get("student_name") or "")
-        for word in words
-    )
+    names = {thesis["student_name"] for thesis in theses if thesis.get("student_name")}
+    accepted = _names_starting_with(transliterate_and_normalize(student).split(), names)
+    if not accepted:
+        # A misspelt name: the closest names, as the old student lookups did.
+        resolution = resolve_query(student, sorted(names))
+        if resolution["status"] == "matched" and resolution["match"]:
+            accepted = {resolution["match"]}
+        elif resolution["status"] == "ambiguous":
+            accepted = set(resolution["candidates"])
+    return lambda thesis: thesis.get("student_name") in accepted
 
 
 def find_theses(
@@ -120,12 +139,16 @@ def find_theses(
         staff_id, staff_name = found.record["id"], found.record["name"]
 
     needle = transliterate_and_normalize(query) if query else None
-    matches_student = _student_matcher(student)
+    theses = {each: _theses(each) for each in ([kind] if kind else list(ThesisKind))}
+    matches_student = _student_matcher(
+        student,
+        [thesis for rows in theses.values() for thesis in rows],
+    )
     matches: list[tuple[tuple[int, str], ThesisMatch]] = []
-    for each in [kind] if kind else list(ThesisKind):
+    for each, rows in theses.items():
         roles = _staff_roles(each, staff_id) if staff_id is not None else None
         _collection, _staff, date = _KINDS[each]
-        for thesis in _theses(each):
+        for thesis in rows:
             held = roles.get(thesis["id"]) if roles is not None else None
             if roles is not None and (held is None or (role and held != role)):
                 continue
