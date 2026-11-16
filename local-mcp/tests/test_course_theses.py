@@ -254,6 +254,37 @@ def test_theses_need_a_filter_and_role_needs_staff() -> None:
     assert find_theses(role=ThesisRole.MENTOR, year=2025).error
 
 
+def test_latest_theses_of_one_kind() -> None:
+    result = find_theses(kind=ThesisKind.BACHELOR, limit=1)
+
+    assert result.total == 2
+    assert [t.title for t in result.items or []] == ["Веб апликација"]
+
+
+def test_president_searches_master_theses_only() -> None:
+    result = find_theses(staff="Весна Димитрова", role=ThesisRole.PRESIDENT)
+
+    assert result.error is None
+    assert result.items == []
+    assert find_theses(
+        staff="Весна Димитрова",
+        role=ThesisRole.PRESIDENT,
+        kind=ThesisKind.BACHELOR,
+    ).error
+
+
+def test_a_thesis_without_a_date_sorts_by_its_year() -> None:
+    _BACHELOR.append(
+        {"id": 3, "title": "Без датум", "year": 2027, "status": "Пријава"},
+    )
+    try:
+        result = find_theses(kind=ThesisKind.BACHELOR)
+    finally:
+        _BACHELOR.pop()
+
+    assert (result.items or [])[0].title == "Без датум"
+
+
 def test_get_course_tool_returns_structured_content() -> None:
     async def call() -> CallToolResult:
         result = await app.call_tool(

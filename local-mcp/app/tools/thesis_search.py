@@ -14,6 +14,8 @@ from app.utils.query_matcher import transliterate_and_normalize
 
 DEFAULT_THESIS_LIMIT = 20
 
+_ROLES = {role.value for role in ThesisRole}
+
 # Per kind: the theses, their staff table and the date each one carries.
 _KINDS = {
     ThesisKind.BACHELOR: ("bachelor_theses", "bachelor_thesis_staff", "submitted"),
@@ -41,6 +43,8 @@ def _staff_roles(kind: ThesisKind, staff_id: int) -> dict[int, ThesisRole]:
     # A staff member holds one role on a committee; mentor wins a tie.
     roles: dict[int, ThesisRole] = {}
     for row in rows:
+        if row.get("role") not in _ROLES:
+            continue
         role = ThesisRole(row["role"])
         if roles.get(row["thesis"]) != ThesisRole.MENTOR:
             roles[row["thesis"]] = role
@@ -72,10 +76,19 @@ def find_theses(
 ) -> ThesisSearch:
     staff = staff.strip() if staff and staff.strip() else None
     query = query.strip() if query and query.strip() else None
-    if staff is None and query is None and year is None:
-        return ThesisSearch(error="Внесете вработен, година или дел од насловот.")
+    if staff is None and query is None and year is None and kind is None:
+        return ThesisSearch(
+            error="Внесете вработен, година, вид или дел од насловот.",
+        )
     if role is not None and staff is None:
         return ThesisSearch(error="Улогата се задава заедно со вработен.")
+    if role == ThesisRole.PRESIDENT:
+        # Only a master's committee has a president.
+        if kind == ThesisKind.BACHELOR:
+            return ThesisSearch(
+                error="Дипломските работи немаат претседател на комисија.",
+            )
+        kind = ThesisKind.MASTER
 
     staff_id: int | None = None
     staff_name: str | None = None
@@ -86,7 +99,7 @@ def find_theses(
         staff_id, staff_name = found.record["id"], found.record["name"]
 
     needle = transliterate_and_normalize(query) if query else None
-    matches: list[tuple[str, ThesisMatch]] = []
+    matches: list[tuple[tuple[int, str], ThesisMatch]] = []
     for each in [kind] if kind else list(ThesisKind):
         roles = _staff_roles(each, staff_id) if staff_id is not None else None
         _collection, _staff, date = _KINDS[each]
@@ -98,8 +111,10 @@ def find_theses(
                 continue
             if needle and needle not in transliterate_and_normalize(thesis["title"]):
                 continue
-            matches.append((thesis.get(date) or "", _match(each, thesis, held)))
+            key = (thesis.get("year") or 0, thesis.get(date) or "")
+            matches.append((key, _match(each, thesis, held)))
 
+    # Newest first: by year, then by date within it.
     matches.sort(key=lambda pair: pair[0], reverse=True)
     return ThesisSearch(
         total=len(matches),
