@@ -26,6 +26,7 @@ from app.schemas.course import (
 )
 from app.schemas.defense import DefenseMatch, DiplomaResult, MasterResult
 from app.schemas.room import RoomData, RoomLocation, RoomMatch, RoomType
+from app.schemas.schedule import Schedule
 from app.schemas.session import ExamSessionScheduleFile
 from app.schemas.staff import (
     StaffMatch,
@@ -33,6 +34,7 @@ from app.schemas.staff import (
     StaffPosition,
     StaffTitle,
 )
+from app.schemas.staff_details import StaffDetails, StaffInclude
 from app.schemas.study_program import StudyCycle, StudyProgramInfo
 from app.schemas.timetable import (
     TimetableDay,
@@ -53,8 +55,10 @@ from app.tools.course import (
 from app.tools.diploma import get_diploma, list_diplomas
 from app.tools.master import get_master, list_masters
 from app.tools.room import DEFAULT_ROOM_LIMIT, get_room_data, list_rooms
+from app.tools.schedule import schedule
 from app.tools.session import DEFAULT_SESSION_LIMIT, list_exam_session_schedules
 from app.tools.staff import get_staff_member, list_staff
+from app.tools.staff_details import get_staff
 from app.tools.study_program import list_study_programs
 from app.tools.timetable import (
     DEFAULT_ENTITY_LIMIT,
@@ -964,6 +968,101 @@ def make_app(settings: Settings) -> MCPServer:
         ],
     ) -> StaffMember:
         return get_staff_member(name)
+
+    @mcp.tool(
+        name="get_staff",
+        description=(
+            "Враќа вработен од FINKI Hub (Directus): титула, звање, е-пошта, кабинет и "
+            "линкови, а со `include` и: `teaching` (предмети и неделни часови во "
+            "најновиот главен распоред), `schedule` (неговите термини: ден, време, "
+            "просторија, групи), `theses` (број на дипломски и магистерски по улога и "
+            "најновите менторства) и `programs` (програми што ги координира). Вклучи "
+            "само што ти треба."
+        ),
+        annotations=ToolAnnotations(
+            title="Вработен со предмети, распоред и трудови",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("get_staff")
+    async def get_staff_tool(
+        name: Annotated[
+            str,
+            Field(
+                description=(
+                    "Име на вработениот; толерантно совпаѓање, поддржува латиница. "
+                    "Ако е нееднозначно, враќа предлози."
+                ),
+                examples=["Весна Димитрова", "vesna dimitrova"],
+                max_length=256,
+            ),
+        ],
+        include: Annotated[
+            list[StaffInclude] | None,
+            Field(
+                description="Што да се вклучи: teaching, schedule, theses, programs.",
+                examples=[["teaching", "schedule"]],
+            ),
+        ] = None,
+    ) -> Annotated[CallToolResult, StaffDetails]:
+        details = await anyio.to_thread.run_sync(lambda: get_staff(name, include))
+        return compact_result(details)
+
+    @mcp.tool(
+        name="schedule",
+        description=(
+            "Враќа термини од најновиот главен распоред на ФИНКИ (Directus) за "
+            "вработен, предмет, просторија и/или група, со можен ден. Филтрите се "
+            "комбинираат со И; имињата се пронаоѓаат толерантно (и кратенки на "
+            "предмети, на пр. „АПС“), а при нееднозначност враќа предлози. За "
+            "постари или прво-неделни распореди користи ги `list_timetable_*`."
+        ),
+        annotations=ToolAnnotations(
+            title="Распоред (кој, што, каде, кога)",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("schedule")
+    async def schedule_tool(
+        staff: Annotated[
+            str | None,
+            Field(description="Име на вработен.", max_length=256),
+        ] = None,
+        course: Annotated[
+            str | None,
+            Field(description="Име или кратенка на предмет.", max_length=256),
+        ] = None,
+        room: Annotated[
+            str | None,
+            Field(
+                description="Просторија, на пр. „Б2.2“ или „315 (ТМФ)“.",
+                max_length=256,
+            ),
+        ] = None,
+        group: Annotated[
+            str | None,
+            Field(
+                description="Група од распоредот или нејзин почеток, на пр. „2г-КН“.",
+                max_length=64,
+            ),
+        ] = None,
+        day: Annotated[
+            TimetableDay | None,
+            Field(description="Ден во неделата.", examples=["Среда"]),
+        ] = None,
+    ) -> Annotated[CallToolResult, Schedule]:
+        result = await anyio.to_thread.run_sync(
+            lambda: schedule(
+                staff=staff, course=course, room=room, group=group, day=day
+            ),
+        )
+        return compact_result(result)
 
     @mcp.tool(
         name="list_diplomas",
