@@ -15,6 +15,8 @@ _STAFF = [
     {"id": 4, "name": "Александра Каневче Дединец"},
     {"id": 23, "name": "Весна Димитриевска Ристовска"},
     {"id": 24, "name": "Весна Димитрова"},
+    {"id": 50, "name": "Марко Марковски"},
+    {"id": 51, "name": "Марко Марковски"},
 ]
 _PROFILE = {
     "id": 24,
@@ -90,6 +92,20 @@ _SLOTS = [
         groups="1г-КН",
         day=5,
     ),
+    _slot(
+        subject="Структурно програмирање",
+        course=None,
+        groups="1г-ИМБ",
+        day=4,
+        teachers="Весна Димитрова, Демонстратор 1",
+        staff=[
+            {
+                "staff": {"id": 24, "name": "Весна Димитрова"},
+                "teacher": "Весна Димитрова",
+            },
+        ],
+    ),
+    _slot(subject="Без ден", day=None, groups="1г-ИМБ"),
 ]
 
 
@@ -140,6 +156,7 @@ def test_staff_schedule_is_sorted_by_day_and_time() -> None:
     assert [(e.day, e.starts) for e in result.entries or []] == [
         (TimetableDay.MONDAY, "08:10"),
         (TimetableDay.WEDNESDAY, "12:00"),
+        (TimetableDay.THURSDAY, "08:10"),
     ]
     assert (result.entries or [])[0].room == "Б2.2 (Бараки)"
 
@@ -179,6 +196,25 @@ def test_unlinked_slot_keeps_the_timetable_names() -> None:
     assert entry.staff == ["Демонстратор 4"]
 
 
+def test_linked_and_unlinked_teachers_are_both_listed() -> None:
+    (entry,) = schedule_of(group="1г-ИМБ").entries or []
+
+    assert entry.staff == ["Весна Димитрова", "Демонстратор 1"]
+
+
+def test_a_slot_without_a_weekday_is_left_out() -> None:
+    assert [e.course for e in schedule_of(group="1г-ИМБ").entries or []] == [
+        "Структурно програмирање",
+    ]
+
+
+def test_two_staff_members_with_one_name_are_not_chosen_between() -> None:
+    result = schedule_of(staff="Марко Марковски")
+
+    assert result.entries is None
+    assert result.suggestions == ["Марко Марковски"]
+
+
 def test_ambiguous_staff_returns_suggestions() -> None:
     result = schedule_of(staff="Весна")
 
@@ -205,7 +241,7 @@ def test_get_staff_with_everything() -> None:
 
     assert details.timetable == "raspored-zimski-2026-27-W"
     assert [c.course for c in details.teaching or []] == ["Криптографија"]
-    assert len(details.schedule or []) == 2
+    assert len(details.schedule or []) == 3
     assert details.theses is not None
     assert details.theses.bachelor.mentor == 2
     assert details.theses.bachelor.member == 1

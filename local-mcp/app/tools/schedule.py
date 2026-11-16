@@ -13,7 +13,14 @@ from app.utils.query_matcher import transliterate_and_normalize
 # The classes of the latest main timetable, from Directus: each slot with
 # the course, room and staff its timetable names were matched to.
 
-_DAYS = dict(enumerate(TimetableDay, start=1))
+# Directus numbers the days 1 (Monday) to 5 (Friday).
+_DAYS = {
+    1: TimetableDay.MONDAY,
+    2: TimetableDay.TUESDAY,
+    3: TimetableDay.WEDNESDAY,
+    4: TimetableDay.THURSDAY,
+    5: TimetableDay.FRIDAY,
+}
 
 _SLOT_FIELDS = (
     "subject",
@@ -31,6 +38,7 @@ _SLOT_FIELDS = (
     "room.location",
     "staff.staff.id",
     "staff.staff.name",
+    "staff.teacher",
 )
 
 
@@ -72,22 +80,28 @@ def staff_ids(slot: dict) -> set[int]:
 
 
 def _staff_names(slot: dict) -> list[str] | None:
-    linked = [
-        link["staff"]["name"]
-        for link in slot.get("staff") or []
-        if isinstance(link.get("staff"), dict)
+    # The linked staff by their names, then every teacher the timetable
+    # names that no link stands for (such as "Демонстратор 4").
+    links = [
+        link for link in slot.get("staff") or [] if isinstance(link.get("staff"), dict)
     ]
-    if linked:
-        return sorted(linked)
-    written = slot.get("teachers")
-    return [name.strip() for name in written.split(",")] if written else None
+    linked_teachers = {link.get("teacher") for link in links}
+    unlinked = [
+        name
+        for name in (part.strip() for part in (slot.get("teachers") or "").split(","))
+        if name and name not in linked_teachers
+    ]
+    names = sorted({link["staff"]["name"] for link in links}) + unlinked
+    return names or None
 
 
 def to_entry(slot: dict) -> ScheduleEntry:
     course = slot.get("course")
     room = slot.get("room")
     return ScheduleEntry(
-        course=course["name"] if isinstance(course, dict) else slot["subject"],
+        course=course["name"]
+        if isinstance(course, dict)
+        else slot.get("subject") or "",
         kind=slot.get("kind") or None,
         day=_DAYS[slot["day"]],
         starts=slot.get("starts"),
@@ -99,11 +113,17 @@ def to_entry(slot: dict) -> ScheduleEntry:
 
 
 def sorted_entries(slots: list[dict]) -> list[ScheduleEntry]:
+    # A slot without a weekday cannot be placed, so it is left out.
+    placed = [slot for slot in slots if slot.get("day") in _DAYS]
     ordered = sorted(
-        slots,
-        key=lambda slot: (slot["day"], slot.get("starts") or "", slot["subject"]),
+        placed,
+        key=lambda slot: (
+            slot["day"],
+            slot.get("starts") or "",
+            slot.get("subject") or "",
+        ),
     )
-    return [to_entry(slot) for slot in ordered if slot.get("day") in _DAYS]
+    return [to_entry(slot) for slot in ordered]
 
 
 def _in_group(slot: dict, group: str) -> bool:

@@ -140,10 +140,14 @@ def get_staff(
         return StaffDetails(name=name, error=found.error, suggestions=found.suggestions)
 
     staff_id = found.record["id"]
-    (record,) = get_directus_items(
+    records = get_directus_items(
         "staff",
         {"fields": _PROFILE_FIELDS, "filter[id][_eq]": staff_id},
     )
+    if not records:
+        # The cached list named someone Directus no longer has.
+        return StaffDetails(name=name, error=f"„{name}“ не е пронајден (вработени)")
+    record = records[0]
     details = StaffDetails(name=record["name"], staff=_profile(record))
     wanted = set(include or ())
 

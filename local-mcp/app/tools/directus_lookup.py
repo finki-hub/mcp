@@ -38,10 +38,20 @@ def _by_label(
             None,
             f"Барањето „{query}“ е прекратко; внесете барем {MIN_QUERY_LENGTH} знаци.",
         )
-    labels = {label(record): record for record in records}
+    labels: dict[str, list[dict]] = {}
+    for record in records:
+        labels.setdefault(label(record), []).append(record)
     resolution = resolve_query(query, list(labels))
     if resolution["status"] == "matched" and resolution["match"] in labels:
-        return Found(labels[resolution["match"]])
+        matches = labels[resolution["match"]]
+        if len(matches) == 1:
+            return Found(matches[0])
+        # Two records with the same name: neither is chosen.
+        return Found(
+            None,
+            f"Повеќе {noun} се викаат „{resolution['match']}“",
+            [resolution["match"]],
+        )
     if resolution["status"] == "ambiguous":
         return Found(
             None,
@@ -71,9 +81,11 @@ def find_course(query: str) -> Found:
         record
         for record in courses
         if normalized
+        and normalized
         in {
-            transliterate_and_normalize(record.get(key) or "")
+            transliterate_and_normalize(value)
             for key in ("abbreviation", "name", "name_en")
+            if (value := record.get(key))
         }
     ]
     if len(exact) == 1:
@@ -101,8 +113,12 @@ def find_room(query: str) -> Found:
     exact = [
         record
         for record in rooms
-        if transliterate_and_normalize(record["name"]) == normalized
-        or transliterate_and_normalize(room_label(record)) == normalized
+        if normalized
+        and normalized
+        in {
+            transliterate_and_normalize(record["name"]),
+            transliterate_and_normalize(room_label(record)),
+        }
     ]
     if len(exact) == 1:
         return Found(exact[0])
