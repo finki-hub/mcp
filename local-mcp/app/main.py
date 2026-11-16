@@ -24,6 +24,7 @@ from app.schemas.course import (
     SemesterType,
     StudyProgram,
 )
+from app.schemas.course_details import CourseDetails, CourseInclude
 from app.schemas.defense import DefenseMatch, DiplomaResult, MasterResult
 from app.schemas.room import RoomData, RoomLocation, RoomMatch, RoomType
 from app.schemas.schedule import Schedule
@@ -36,6 +37,7 @@ from app.schemas.staff import (
 )
 from app.schemas.staff_details import StaffDetails, StaffInclude
 from app.schemas.study_program import StudyCycle, StudyProgramInfo
+from app.schemas.thesis_search import ThesisKind, ThesisRole, ThesisSearch
 from app.schemas.timetable import (
     TimetableDay,
     TimetableEntity,
@@ -52,6 +54,7 @@ from app.tools.course import (
     get_course_staff,
     list_courses,
 )
+from app.tools.course_details import get_course
 from app.tools.diploma import get_diploma, list_diplomas
 from app.tools.master import get_master, list_masters
 from app.tools.room import DEFAULT_ROOM_LIMIT, get_room_data, list_rooms
@@ -60,6 +63,7 @@ from app.tools.session import DEFAULT_SESSION_LIMIT, list_exam_session_schedules
 from app.tools.staff import get_staff_member, list_staff
 from app.tools.staff_details import get_staff
 from app.tools.study_program import list_study_programs
+from app.tools.thesis_search import DEFAULT_THESIS_LIMIT, find_theses
 from app.tools.timetable import (
     DEFAULT_ENTITY_LIMIT,
     DEFAULT_TIMETABLE_LIMIT,
@@ -1010,6 +1014,120 @@ def make_app(settings: Settings) -> MCPServer:
     ) -> Annotated[CallToolResult, StaffDetails]:
         details = await anyio.to_thread.run_sync(lambda: get_staff(name, include))
         return compact_result(details)
+
+    @mcp.tool(
+        name="get_course",
+        description=(
+            "Враќа предмет од FINKI Hub (Directus) по име или кратенка (на пр. „АПС“), "
+            "а со `include` и: `curricula` (код, семестар, кредити, предуслови и "
+            "статус по програма во секоја акредитација), `syllabus` (цели и содржина "
+            "по недели), `equivalencies` (еквивалентни предмети низ акредитациите), "
+            "`enrollments` (запишани по година), `teaching` (наставници во најновиот "
+            "распоред) и `schedule` (термини). Вклучи само што ти треба."
+        ),
+        annotations=ToolAnnotations(
+            title="Предмет со акредитации, силабус и наставници",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("get_course")
+    async def get_course_tool(
+        name: Annotated[
+            str,
+            Field(
+                description=(
+                    "Име или кратенка на предметот; толерантно совпаѓање, поддржува "
+                    "латиница. Ако е нееднозначно, враќа предлози."
+                ),
+                examples=["Алгоритми и податочни структури", "АПС", "kriptografija"],
+                max_length=256,
+            ),
+        ],
+        include: Annotated[
+            list[CourseInclude] | None,
+            Field(
+                description=(
+                    "Што да се вклучи: curricula, syllabus, equivalencies, "
+                    "enrollments, teaching, schedule."
+                ),
+                examples=[["curricula", "teaching"]],
+            ),
+        ] = None,
+    ) -> Annotated[CallToolResult, CourseDetails]:
+        details = await anyio.to_thread.run_sync(lambda: get_course(name, include))
+        return compact_result(details)
+
+    @mcp.tool(
+        name="find_theses",
+        description=(
+            "Пребарува дипломски и магистерски трудови (Directus) по вработен во "
+            "комисијата и неговата улога (ментор, член, претседател), година и дел "
+            "од насловот; најновите прво. Потребен е вработен, година, вид или наслов. "
+            "За целосни податоци за еден труд користи `get_diploma`/`get_master`."
+        ),
+        annotations=ToolAnnotations(
+            title="Пребарување трудови по комисија, година и наслов",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("find_theses")
+    async def find_theses_tool(
+        *,
+        staff: Annotated[
+            str | None,
+            Field(
+                description="Име на вработен во комисијата (ментор или член).",
+                max_length=256,
+            ),
+        ] = None,
+        role: Annotated[
+            ThesisRole | None,
+            Field(
+                description=(
+                    "Улога на вработениот: mentor, member или president (само "
+                    "магистерски); бара `staff`."
+                ),
+            ),
+        ] = None,
+        kind: Annotated[
+            ThesisKind | None,
+            Field(
+                description="bachelor (дипломски) или master (магистерски); стандардно двата."
+            ),
+        ] = None,
+        year: Annotated[
+            int | None,
+            Field(description="Година на трудот.", ge=2000, le=2100, examples=[2025]),
+        ] = None,
+        query: Annotated[
+            str | None,
+            Field(
+                description="Дел од насловот (на писмото на насловот).",
+                max_length=256,
+            ),
+        ] = None,
+        limit: Annotated[
+            int,
+            Field(description="Најмногу трудови во одговорот.", ge=1, le=100),
+        ] = DEFAULT_THESIS_LIMIT,
+    ) -> Annotated[CallToolResult, ThesisSearch]:
+        result = await anyio.to_thread.run_sync(
+            lambda: find_theses(
+                kind=kind,
+                staff=staff,
+                role=role,
+                year=year,
+                query=query,
+                limit=limit,
+            ),
+        )
+        return compact_result(result)
 
     @mcp.tool(
         name="schedule",
