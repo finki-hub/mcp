@@ -419,6 +419,22 @@ def get_anto_quotes() -> list[str]:
     return _anto_quotes_cache.get()
 
 
+_directus_item_caches: dict[str, _JsonCache[dict[str, list[dict]]]] = {}
+
+
+def get_directus_items(collection: str, params: dict[str, str | int]) -> list[dict]:
+    """
+    Read the items of a public Directus collection, returning a cached copy
+    of the same query if it is less than one hour old.
+    """
+    filename = f"items/{collection}?{urllib.parse.urlencode(sorted(params.items()))}"
+    cache = _directus_item_caches.setdefault(
+        filename,
+        _JsonCache[dict[str, list[dict]]](filename, base_url=_settings.DIRECTUS_URL),
+    )
+    return cache.get()["data"]
+
+
 def get_degree_programs() -> list[dict]:
     """
     Fetch the degree programs from Directus, returning a cached copy if it is
