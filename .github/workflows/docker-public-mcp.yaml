@@ -2,6 +2,12 @@ name: Docker (Public MCP)
 
 on:
   push:
+    # Only a change to the public MCP rebuilds it: its submodule is cloned
+    # from FINKI's GitLab, which the runners cannot always reach.
+    paths:
+      - public-mcp
+      - .gitmodules
+      - .github/workflows/docker-public-mcp.yaml
   workflow_dispatch:
 
 permissions:
