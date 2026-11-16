@@ -7,6 +7,7 @@ from mcp.types import CallToolResult, TextContent
 from app.main import app
 from app.tools import room as room_tools
 from app.tools import session as session_tools
+from app.tools import study_program as study_program_tools
 from app.tools import timetable as timetable_tools
 from app.tools.room import list_rooms
 from app.tools.session import list_exam_session_schedules
@@ -16,6 +17,7 @@ from app.tools.timetable import (
     list_timetable_groups,
     list_timetables,
 )
+from tests.test_study_programs import DEGREE_PROGRAMS
 
 _TIMETABLES = [
     {
@@ -94,6 +96,11 @@ def _data(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(timetable_tools, "get_timetable_detail", lambda _id: _DETAIL)
     monkeypatch.setattr(session_tools, "get_exam_sessions", lambda: _SESSIONS)
     monkeypatch.setattr(room_tools, "get_rooms", lambda: _ROOMS)
+    monkeypatch.setattr(
+        study_program_tools,
+        "get_degree_programs",
+        lambda: DEGREE_PROGRAMS,
+    )
 
 
 def test_timetables_are_newest_first_with_active_flag() -> None:
@@ -200,6 +207,11 @@ def test_study_programs_tool_wraps_list_for_structured_content() -> None:
                 "accreditation": "2023",
                 "language": "англиски",
                 "url": "https://finki.ukim.mk/program/SEIS23_3",
+                "title_en": (
+                    "Bachelor of Science in Software Engineering and "
+                    "Information Technologies"
+                ),
+                "ects": 180,
             },
         ],
     }

@@ -20,7 +20,6 @@ from app.schemas.course import (
     CourseParticipants,
     CourseStaff,
     CourseStatus,
-    CourseSyllabus,
     CourseTag,
     SemesterType,
     StudyProgram,
@@ -57,7 +56,6 @@ from app.tools.room import DEFAULT_ROOM_LIMIT, get_room_data, list_rooms
 from app.tools.session import DEFAULT_SESSION_LIMIT, list_exam_session_schedules
 from app.tools.staff import get_staff_member, list_staff
 from app.tools.study_program import list_study_programs
-from app.tools.syllabus import get_course_syllabus
 from app.tools.timetable import (
     DEFAULT_ENTITY_LIMIT,
     DEFAULT_TIMETABLE_LIMIT,
@@ -726,65 +724,20 @@ def make_app(settings: Settings) -> MCPServer:
         return get_course_participants(course_name)
 
     @mcp.tool(
-        name="get_course_syllabus",
-        description=(
-            "Враќа официјален силабус на предмет од акредитацијата на ФИНКИ: содржина "
-            "(теми по недели, одделно за предавања и вежби), цели, методи на учење, "
-            "литература, кредити и неделен фонд часови. Користи ја за прашања „што се "
-            "учи по X“ и за споредба на содржината на предмети. Стандардно ја зема "
-            "најновата акредитација во која предметот постои. Ако врати `error`, "
-            "пренеси ја пораката наместо да ја погодуваш содржината."
-        ),
-        annotations=ToolAnnotations(
-            title="Силабус (содржина) на предмет",
-            destructiveHint=False,
-            idempotentHint=True,
-            openWorldHint=True,
-            readOnlyHint=True,
-        ),
-    )
-    @track_tool("get_course_syllabus")
-    async def get_course_syllabus_tool(
-        course_name: Annotated[
-            str,
-            Field(
-                description=(
-                    "Име или кратенка на предметот (на пр. „АПС“, „МИС“, „paps“). "
-                    "Кратенките се проверуваат прво; совпаѓањето на името е толерантно "
-                    "(fuzzy) и поддржува латиница. Ако кратенката припаѓа на повеќе "
-                    "предмети или нема точно совпаѓање, враќа предлози."
-                ),
-                examples=["Вештачка интелигенција", "MIS", "АПС"],
-            ),
-        ],
-        accreditation: Annotated[
-            AccreditationYear | None,
-            Field(
-                description=(
-                    "Година на акредитација; стандардно најновата во која предметот "
-                    "постои."
-                ),
-                examples=["2018"],
-            ),
-        ] = None,
-    ) -> CourseSyllabus:
-        return await anyio.to_thread.run_sync(
-            lambda: get_course_syllabus(course_name, accreditation),
-        )
-
-    @mcp.tool(
         name="list_study_programs",
         description=(
             "Враќа студиски програми на ФИНКИ (прв, втор и трет циклус): код, име на "
             "македонски и англиски, циклус, времетраење во години, акредитација, "
-            "јазик на настава (само кога е официјално потврден) и линк. Кратенката "
-            "(на пр. „КН“) се користи како `program` во `list_courses`."
+            "јазик на настава (само кога е официјално потврден), стекнато звање, "
+            "вкупно ЕКТС, координатор (магистерски) и линк. Со `details` враќа и "
+            "опис и правила на наставната програма (изборни предмети по тежина). "
+            "Кратенката (на пр. „КН“) се користи како `program` во `list_courses`."
         ),
         annotations=ToolAnnotations(
             title="Студиски програми",
             destructiveHint=False,
             idempotentHint=True,
-            openWorldHint=False,
+            openWorldHint=True,
             readOnlyHint=True,
         ),
     )
@@ -819,10 +772,25 @@ def make_app(settings: Settings) -> MCPServer:
                 max_length=256,
             ),
         ] = None,
+        details: Annotated[
+            bool,
+            Field(
+                description=(
+                    "Дали да се вклучат описот и правилата на наставната програма; "
+                    "користи го со `query` за една програма."
+                ),
+            ),
+        ] = False,
     ) -> Annotated[CallToolResult, list[StudyProgramInfo]]:
-        return compact_result(
-            list_study_programs(cycle=cycle, accreditation=accreditation, query=query)
+        programs = await anyio.to_thread.run_sync(
+            lambda: list_study_programs(
+                cycle=cycle,
+                accreditation=accreditation,
+                query=query,
+                details=details,
+            ),
         )
+        return compact_result(programs)
 
     @mcp.tool(
         name="list_rooms",

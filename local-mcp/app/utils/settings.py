@@ -1,4 +1,3 @@
-from pydantic import SecretStr
 from pydantic_settings import BaseSettings
 
 
@@ -15,6 +14,7 @@ class Settings(BaseSettings):
     PORT: int = 8808
 
     DATA_STORAGE_URL: str = "https://data.finki-hub.com/legacy"
+    DIRECTUS_URL: str = "https://data.finki-hub.com"
     DIPLOMAS_API_URL: str = "https://bachelors-api.finki-hub.com/diplomas"
     MASTERS_API_URL: str = "https://masters-api.finki-hub.com/masters"
     TIMETABLES_API_URL: str = "https://timetables-api.finki-hub.com"
@@ -22,8 +22,6 @@ class Settings(BaseSettings):
         "https://finki.ukim.mk/wp-json/wp/v2/announcement"
     )
     CHAT_BOT_API_URL: str = "http://api:8880"
-    PUBAPI_URL: str = "https://pubapi.finki.ukim.mk"
-    PUBAPI_API_KEY: SecretStr = SecretStr("")
 
     POSTHOG_KEY: str = ""
     POSTHOG_HOST: str = "https://eu.i.posthog.com"

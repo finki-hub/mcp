@@ -35,18 +35,16 @@ Server runs on `http://localhost:8808`
 
 ### Environment
 
-- `PUBAPI_URL` - FINKI public API base URL (default `https://pubapi.finki.ukim.mk`)
-- `PUBAPI_API_KEY` - API key for the FINKI public API, sent as `X-Api-Key`; without it `get_course_syllabus` reports the syllabus as unavailable
+- `DIRECTUS_URL` - FINKI Hub Directus base URL, read for the study programs (default `https://data.finki-hub.com`)
 
 ## Tools
 
 - Get available courses (staff/participants)
 - Filter courses by program, semester or winter/summer term, name or abbreviation, and enrolled-student range in one call; list outputs are compact, paginated (`limit`/`offset`) and flag truncation
-- List FINKI study programs for all three cycles (`list_study_programs`: names, duration, accreditation, language of instruction where officially confirmed)
+- List FINKI study programs for all three cycles from Directus (`list_study_programs`: names, duration, accreditation, language of instruction where officially confirmed, awarded degree title, total ECTS, master's coordinator; with `details`, the description and curriculum rules)
 - Get course staff/participants information
 - Fuzzy query matching support
 - Course lookup by abbreviation (Cyrillic or Latin, e.g. `АПС`, `БнП`/`БП`, `paps`); shared abbreviations return all matching courses as suggestions
-- Get the official course syllabus (`get_course_syllabus`: topics by week for lectures and exercises, goals, learning methods, literature, credits, weekly hours; newest accreditation by default) from the pubapi subjects endpoint
 - Search FINKI announcements from finki.ukim.mk (`search_announcements`: deadlines for semester enrollment, exam registration, admission rounds, scholarships; Cyrillic or Latin keywords) and read one in full (`get_announcement`)
 
 ## License

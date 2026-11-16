@@ -60,3 +60,38 @@ class StudyProgramInfo(PrunedModel):
         description="Линк до страницата на програмата",
         examples=["https://finki.ukim.mk/program/KN23"],
     )
+    title: str | None = Field(
+        None,
+        description="Звање што се стекнува по завршување на програмата",
+        examples=["Магистер по Безбедност, криптографија и кодирање"],
+    )
+    title_en: str | None = Field(
+        None,
+        description="Звање на англиски",
+        examples=["Bachelor of Science in Computer Science"],
+    )
+    ects: int | None = Field(
+        None,
+        description="Вкупен број ЕКТС кредити на програмата",
+        examples=[240],
+    )
+    coordinator: str | None = Field(
+        None,
+        description="Координатор на програмата (магистерски студии)",
+        examples=["Весна Димитрова"],
+    )
+    description: str | None = Field(
+        None,
+        description=(
+            "Општи информации за програмата, на јазикот на кој ги дава "
+            "страницата (само со `details`)"
+        ),
+    )
+    rules: str | None = Field(
+        None,
+        description=(
+            "Правила на наставната програма: број на предмети, ограничувања на "
+            "изборните предмети по тежина, екстракурикуларни кредити (само со "
+            "`details`)"
+        ),
+    )
