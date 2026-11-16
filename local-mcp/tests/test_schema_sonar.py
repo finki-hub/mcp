@@ -4,14 +4,11 @@ from pydantic import BaseModel
 from app.schemas.course import (
     Accreditation,
     AccreditationMatch,
-    Course,
     CourseMatch,
-    CourseParticipants,
-    CourseStaff,
     CourseStatus,
 )
 from app.schemas.room import Room, RoomData, RoomLocation, RoomMatch, RoomType
-from app.schemas.staff import StaffMatch, StaffMember, StaffPosition, StaffProfile
+from app.schemas.staff import StaffMatch, StaffPosition, StaffProfile
 
 
 @pytest.mark.parametrize("model", [Room, RoomMatch, RoomData])
@@ -42,27 +39,15 @@ def test_staff_position_examples(model: type[BaseModel]) -> None:
     assert model.model_json_schema()["properties"]["position"]["examples"] == ["Доцент"]
 
 
-@pytest.mark.parametrize("model", [StaffMatch, StaffMember])
-def test_staff_name_examples(model: type[BaseModel]) -> None:
-    assert model.model_json_schema()["properties"]["name"]["examples"] == [
+def test_staff_name_examples() -> None:
+    assert StaffMatch.model_json_schema()["properties"]["name"]["examples"] == [
         "Александар Стојменски"
     ]
 
 
-def test_staff_member_lookup_examples() -> None:
-    properties = StaffMember.model_json_schema()["properties"]
-    assert properties["suggestions"]["examples"] == [
-        ["Александар Стојменски", "Александар Тенев"],
-    ]
-    assert (
-        properties["match_info"]["examples"][0]["matched_staff"]
-        == "Александар Стојменски"
-    )
-
-
 @pytest.mark.parametrize(
     "model",
-    [Accreditation, Course, CourseStaff, CourseParticipants, CourseMatch],
+    [Accreditation, CourseMatch],
 )
 def test_course_name_description(model: type[BaseModel]) -> None:
     assert (

@@ -88,17 +88,24 @@ class CourseDetails(PrunedModel):
         description="Запишани студенти по академска година, најновата прва (со `enrollments`)",
         examples=[{"2026/2027": 468, "2025/2026": 877}],
     )
-    timetable: str | None = Field(
+    teaching_timetable: str | None = Field(
         None,
-        description="Распоредот од кој се `teaching` и `schedule`",
+        description=(
+            "Најновиот главен распоред во кој се држи предметот, од кој е `teaching` "
+            "(летен предмет во зимскиот семестар го покажува минатиот летен)"
+        ),
     )
     teaching: list[CourseTeacher] | None = Field(
         None,
-        description="Наставници во најновиот главен распоред (со `teaching`)",
+        description="Наставници во `teaching_timetable` (со `teaching`)",
+    )
+    timetable: str | None = Field(
+        None,
+        description="Тековниот главен распоред, од кој е `schedule`",
     )
     schedule: list[ScheduleEntry] | None = Field(
         None,
-        description="Термини во најновиот главен распоред (со `schedule`)",
+        description="Термини во тековниот главен распоред (со `schedule`)",
     )
     error: str | None = Field(None, description="Порака за грешка")
     suggestions: list[str] | None = Field(None, description="Предлози")

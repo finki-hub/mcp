@@ -5,12 +5,9 @@ from app.schemas.course import (
     Accreditation,
     AccreditationMatch,
     AccreditationYear,
-    Course,
     CourseData,
     CourseList,
     CourseMatch,
-    CourseParticipants,
-    CourseStaff,
     CourseStatus,
     CourseTag,
     SemesterType,
@@ -25,7 +22,6 @@ from app.utils.http_client import get_courses
 from app.utils.pagination import paginate
 from app.utils.query_matcher import (
     match_query_to_group,
-    resolve_query,
     transliterate_and_normalize,
 )
 
@@ -117,138 +113,6 @@ def _build_course(record: dict) -> CourseData:
         ),
         participants=participants,
         accreditations=_build_accreditations(record),
-    )
-
-
-_MIN_QUERY_LENGTH = 3
-
-
-def _not_found(course_name: str) -> str:
-    return f"Предметот „{course_name}“ не е пронајден"
-
-
-class _Lookup(NamedTuple):
-    data: CourseData | None
-    match_info: dict | None
-    error: str | None
-    suggestions: list[str] | None
-
-
-def _lookup_course(course_name: str) -> _Lookup:
-    query = course_name.strip()
-    if not query:
-        return _Lookup(None, None, "Внесете име на предметот.", None)
-
-    courses = get_courses()
-    abbreviation_matches = resolve_abbreviation(
-        query,
-        build_abbreviation_index(courses),
-    )
-    if len(abbreviation_matches) > 1:
-        return _Lookup(
-            None,
-            None,
-            f"Повеќе предмети одговараат на „{course_name}“",
-            abbreviation_matches,
-        )
-    if abbreviation_matches:
-        matched = next(r for r in courses if r.get("name") == abbreviation_matches[0])
-        match_info = {
-            "original_query": course_name,
-            "matched_course": abbreviation_matches[0],
-            "similarity_score": 100,
-            "match_type": "abbreviation",
-        }
-        return _Lookup(_build_course(matched), match_info, None, None)
-
-    if len(query) < _MIN_QUERY_LENGTH:
-        return _Lookup(
-            None,
-            None,
-            f"Барањето е прекратко; внесете барем {_MIN_QUERY_LENGTH} знаци.",
-            None,
-        )
-
-    course_names = [record.get("name", "") for record in courses]
-    resolution = resolve_query(course_name, course_names)
-
-    if resolution["status"] == "matched":
-        record = next(
-            (r for r in courses if r.get("name") == resolution["match"]),
-            None,
-        )
-        if record is not None:
-            match_info = {
-                "original_query": course_name,
-                "matched_course": resolution["match"],
-                "similarity_score": resolution["score"],
-                "match_type": resolution["match_type"],
-            }
-            return _Lookup(_build_course(record), match_info, None, None)
-
-    if resolution["status"] == "ambiguous":
-        return _Lookup(
-            None,
-            None,
-            f"Повеќе предмети одговараат на „{course_name}“",
-            resolution["candidates"],
-        )
-
-    return _Lookup(
-        None,
-        None,
-        _not_found(course_name),
-        resolution["candidates"] or None,
-    )
-
-
-def get_course_data(course_name: str) -> Course:
-    found = _lookup_course(course_name)
-    if found.data is None:
-        return Course(
-            name=course_name,
-            error=found.error,
-            suggestions=found.suggestions,
-        )
-    return Course(
-        name=found.data.name,
-        abbreviation=found.data.abbreviation,
-        tags=found.data.tags,
-        channel=found.data.channel,
-        accreditations=found.data.accreditations,
-        match_info=found.match_info,
-    )
-
-
-def get_course_staff(course_name: str) -> CourseStaff:
-    found = _lookup_course(course_name)
-    if found.data is None:
-        return CourseStaff(
-            name=course_name,
-            error=found.error,
-            suggestions=found.suggestions,
-        )
-    return CourseStaff(
-        name=found.data.name,
-        abbreviation=found.data.abbreviation,
-        staff=found.data.staff,
-        match_info=found.match_info,
-    )
-
-
-def get_course_participants(course_name: str) -> CourseParticipants:
-    found = _lookup_course(course_name)
-    if found.data is None:
-        return CourseParticipants(
-            name=course_name,
-            error=found.error,
-            suggestions=found.suggestions,
-        )
-    return CourseParticipants(
-        name=found.data.name,
-        abbreviation=found.data.abbreviation,
-        participants=found.data.participants,
-        match_info=found.match_info,
     )
 
 

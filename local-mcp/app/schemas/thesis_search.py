@@ -22,6 +22,11 @@ class ThesisMatch(PrunedModel):
     )
     title: str = Field(..., description="Наслов на трудот")
     student: str | None = Field(None, description="Студент", examples=["Ана Анова"])
+    student_index: str | None = Field(
+        None,
+        description="Број на индекс на студентот",
+        examples=["221090"],
+    )
     mentor: str | None = Field(None, description="Ментор", examples=["Весна Димитрова"])
     year: int | None = Field(None, description="Година", examples=[2026])
     date: str | None = Field(

@@ -39,13 +39,11 @@ Server runs on `http://localhost:8808`
 
 ## Tools
 
-- Get available courses (staff/participants)
 - Filter courses by program, semester or winter/summer term, name or abbreviation, and enrolled-student range in one call; list outputs are compact, paginated (`limit`/`offset`) and flag truncation
 - List FINKI study programs for all three cycles from Directus (`list_study_programs`: names, duration, accreditation, language of instruction where officially confirmed, awarded degree title, total ECTS, master's coordinator; with `details`, the description and curriculum rules)
-- Get course staff/participants information
 - Ask who teaches what, when and where in the latest main timetable (`schedule`: by staff member, course or abbreviation, room and/or class, optionally one day; from Directus, with courses, rooms and staff already matched)
-- Get a course with what is asked for (`get_course`: by name or abbreviation, plus `curricula` per accreditation, `syllabus` objectives and content, `equivalencies` across accreditations, `enrollments` per year, `teaching` and `schedule` in the latest main timetable)
-- Search theses by committee member and role, year and title (`find_theses`: bachelor's and master's, newest first)
+- Get a course with what is asked for (`get_course`: by name or abbreviation, plus `curricula` per accreditation, `syllabus` objectives and content, `equivalencies` across accreditations, `enrollments` per year, `teaching` from the latest main timetable the course is taught in, `schedule` in the current one)
+- Search theses by student (name or index), committee member and role, year and title (`find_theses`: bachelor's and master's, newest first); `get_diploma`/`get_master` give one thesis in full
 - Get a staff member with what is asked for (`get_staff`: profile, plus `teaching`, `schedule`, `theses` counts and recent mentorships, `programs` they coordinate)
 - Fuzzy query matching support
 - Course lookup by abbreviation (Cyrillic or Latin, e.g. `АПС`, `БнП`/`БП`, `paps`); shared abbreviations return all matching courses as suggestions

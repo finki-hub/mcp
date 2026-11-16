@@ -101,12 +101,3 @@ def test_record_parsing() -> None:
     assert acc.offered_in is None
     assert acc.code == "CODE"
     assert acc.name == "Renamed"
-
-
-def test_blank_short_queries(records: list[dict]) -> None:
-    assert records
-    assert tools.get_course_data("  ").error == "Внесете име на предметот."
-    assert (
-        tools.get_course_data("x").error
-        == "Барањето е прекратко; внесете барем 3 знаци."
-    )

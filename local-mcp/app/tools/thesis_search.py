@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 from app.schemas.thesis_search import (
     ThesisKind,
     ThesisMatch,
@@ -28,7 +30,7 @@ def _theses(kind: ThesisKind) -> list[dict]:
     return get_directus_items(
         collection,
         {
-            "fields": f"id,title,student_name,mentor,year,status,{date}",
+            "fields": f"id,title,student_index,student_name,mentor,year,status,{date}",
             "limit": -1,
         },
     )
@@ -57,6 +59,7 @@ def _match(kind: ThesisKind, thesis: dict, role: ThesisRole | None) -> ThesisMat
         kind=kind,
         title=thesis["title"],
         student=thesis.get("student_name") or None,
+        student_index=thesis.get("student_index") or None,
         mentor=thesis.get("mentor") or None,
         year=thesis.get("year"),
         date=thesis.get(date),
@@ -65,10 +68,27 @@ def _match(kind: ThesisKind, thesis: dict, role: ThesisRole | None) -> ThesisMat
     )
 
 
+def _student_matcher(student: str | None) -> Callable[[dict], bool]:
+    if student is None:
+        return lambda _thesis: True
+    if student.isdigit():
+        # An index number, leading zeros aside.
+        index = student.lstrip("0") or "0"
+        return lambda thesis: (
+            (str(thesis.get("student_index") or "").lstrip("0") or "0") == index
+        )
+    words = transliterate_and_normalize(student).split()
+    return lambda thesis: all(
+        word in transliterate_and_normalize(thesis.get("student_name") or "")
+        for word in words
+    )
+
+
 def find_theses(
     *,
     kind: ThesisKind | None = None,
     staff: str | None = None,
+    student: str | None = None,
     role: ThesisRole | None = None,
     year: int | None = None,
     query: str | None = None,
@@ -76,9 +96,10 @@ def find_theses(
 ) -> ThesisSearch:
     staff = staff.strip() if staff and staff.strip() else None
     query = query.strip() if query and query.strip() else None
-    if staff is None and query is None and year is None and kind is None:
+    student = student.strip() if student and student.strip() else None
+    if all(value is None for value in (staff, student, query, year, kind)):
         return ThesisSearch(
-            error="Внесете вработен, година, вид или дел од насловот.",
+            error="Внесете вработен, студент, година, вид или дел од насловот.",
         )
     if role is not None and staff is None:
         return ThesisSearch(error="Улогата се задава заедно со вработен.")
@@ -99,6 +120,7 @@ def find_theses(
         staff_id, staff_name = found.record["id"], found.record["name"]
 
     needle = transliterate_and_normalize(query) if query else None
+    matches_student = _student_matcher(student)
     matches: list[tuple[tuple[int, str], ThesisMatch]] = []
     for each in [kind] if kind else list(ThesisKind):
         roles = _staff_roles(each, staff_id) if staff_id is not None else None
@@ -110,6 +132,8 @@ def find_theses(
             if year is not None and thesis.get("year") != year:
                 continue
             if needle and needle not in transliterate_and_normalize(thesis["title"]):
+                continue
+            if not matches_student(thesis):
                 continue
             key = (thesis.get("year") or 0, thesis.get(date) or "")
             matches.append((key, _match(each, thesis, held)))

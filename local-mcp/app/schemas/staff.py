@@ -88,37 +88,3 @@ class StaffProfile(BaseModel):
         description="Линк до профилот на веб-страницата на ФИНКИ",
         examples=["https://www.finki.ukim.mk/mk/staff/aleksandar-tenev"],
     )
-
-
-class StaffMember(PrunedModel):
-    name: str = Field(
-        ...,
-        description="Име и презиме на вработениот",
-        examples=[_STAFF_NAME_EXAMPLE],
-    )
-    staff: StaffProfile | None = Field(
-        None,
-        description="Податоци за вработениот",
-    )
-    error: str | None = Field(
-        None,
-        description="Порака за грешка ако вработениот не е пронајден",
-        examples=["Вработениот „непознат“ не е пронајден"],
-    )
-    suggestions: list[str] | None = Field(
-        None,
-        description="Предложени имиња ако нема точно совпаѓање",
-        examples=[[_STAFF_NAME_EXAMPLE, "Александар Тенев"]],
-    )
-    match_info: dict | None = Field(
-        None,
-        description="Информации за совпаѓањето: барање, пронајден вработен, оценка и тип",
-        examples=[
-            {
-                "original_query": "aleksandar stojmenski",
-                "matched_staff": _STAFF_NAME_EXAMPLE,
-                "similarity_score": 95,
-                "match_type": "fuzzy",
-            },
-        ],
-    )
