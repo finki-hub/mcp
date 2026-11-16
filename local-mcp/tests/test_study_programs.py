@@ -107,3 +107,10 @@ def test_description_and_rules_only_with_details() -> None:
     assert full.description
     assert full.rules
     assert full.rules.startswith("Во наставната програма")
+
+
+def test_details_are_left_out_of_a_broad_list() -> None:
+    programs = list_study_programs(cycle=StudyCycle.FIRST, details=True)
+
+    assert len(programs) > study_program_tools.MAX_DETAILED_PROGRAMS
+    assert all(p.description is None and p.rules is None for p in programs)

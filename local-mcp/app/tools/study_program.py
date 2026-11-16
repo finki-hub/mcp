@@ -3,6 +3,10 @@ from app.schemas.study_program import StudyCycle, StudyProgramInfo
 from app.utils.http_client import get_degree_programs
 from app.utils.query_matcher import transliterate_and_normalize
 
+# The most programs `details` adds the description and rules to; a broader
+# list stays brief so one call cannot return every program's full text.
+MAX_DETAILED_PROGRAMS = 5
+
 # Directus names the cycles in English; the tool keeps its Macedonian values.
 _CYCLES = {
     "first": StudyCycle.FIRST,
@@ -18,7 +22,7 @@ def _name(record: dict, key: str) -> str | None:
     return None
 
 
-def _to_program(record: dict, *, details: bool) -> StudyProgramInfo:
+def _to_program(record: dict) -> StudyProgramInfo:
     return StudyProgramInfo(
         code=record["code"],
         # The curriculum column's name (КН, СИИС) is the `program` of
@@ -35,8 +39,6 @@ def _to_program(record: dict, *, details: bool) -> StudyProgramInfo:
         title_en=record.get("title_en"),
         ects=record.get("ects"),
         coordinator=_name(record, "coordinator"),
-        description=record.get("description") if details else None,
-        rules=record.get("rules") if details else None,
     )
 
 
@@ -53,13 +55,22 @@ def list_study_programs(
     details: bool = False,
 ) -> list[StudyProgramInfo]:
     normalized_query = transliterate_and_normalize(query) if query else ""
-    programs = (
-        _to_program(record, details=details) for record in get_degree_programs()
-    )
-    return [
-        program
-        for program in programs
+    candidates = ((_to_program(record), record) for record in get_degree_programs())
+    matches = [
+        (program, record)
+        for program, record in candidates
         if (cycle is None or program.cycle == cycle)
         and (accreditation is None or program.accreditation == accreditation)
         and (not normalized_query or _matches_query(program, normalized_query))
+    ]
+    if not details or len(matches) > MAX_DETAILED_PROGRAMS:
+        return [program for program, _record in matches]
+    return [
+        program.model_copy(
+            update={
+                "description": record.get("description"),
+                "rules": record.get("rules"),
+            },
+        )
+        for program, record in matches
     ]
