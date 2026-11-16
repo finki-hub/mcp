@@ -3,6 +3,7 @@
 import logging
 import threading
 import time
+import urllib.parse
 from collections.abc import AsyncIterator, Callable
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
@@ -346,6 +347,30 @@ _timetables_cache = _JsonCache[list[dict]](
     base_url=_settings.TIMETABLES_API_URL,
 )
 _timetable_detail_caches: dict[str, _JsonCache[dict]] = {}
+_DEGREE_PROGRAM_FIELDS: Final = (
+    "code",
+    "name",
+    "name_en",
+    "cycle",
+    "duration_years",
+    "accreditation",
+    "language",
+    "url",
+    "title",
+    "title_en",
+    "ects",
+    "coordinator.name",
+    "description",
+    "rules",
+    "curriculum_program.name",
+)
+_degree_programs_cache = _JsonCache[dict[str, list[dict]]](
+    "items/degree_programs?"
+    + urllib.parse.urlencode(
+        {"fields": ",".join(_DEGREE_PROGRAM_FIELDS), "limit": -1, "sort": "id"},
+    ),
+    base_url=_settings.DIRECTUS_URL,
+)
 _diplomas_cache = _StreamedDefenseCache(
     _StreamEndpoint("diplomas", _settings.DIPLOMAS_API_URL, _validate_diploma)
 )
@@ -392,6 +417,14 @@ def get_anto_quotes() -> list[str]:
     than one hour old.
     """
     return _anto_quotes_cache.get()
+
+
+def get_degree_programs() -> list[dict]:
+    """
+    Fetch the degree programs from Directus, returning a cached copy if it is
+    less than one hour old.
+    """
+    return _degree_programs_cache.get()["data"]
 
 
 def get_timetables() -> list[dict]:

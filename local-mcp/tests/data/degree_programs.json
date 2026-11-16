@@ -1,0 +1,452 @@
+[
+  {
+    "code": "KN23",
+    "name": "Компјутерски науки",
+    "name_en": "Computer Science",
+    "cycle": "first",
+    "duration_years": 4,
+    "accreditation": "2023",
+    "language": null,
+    "url": "https://finki.ukim.mk/program/KN23",
+    "title": "Дипломиран инженер по информатички науки и компјутерско инженерство, насока Компјутерски науки",
+    "title_en": "Bachelor of Science in Computer Science",
+    "ects": 240,
+    "coordinator": null,
+    "description": "Додипломските студии по компјутерски науки имаат за цел обезбедување на врвен кадар за задоволување на сé поголемата побарувачка за инженери по информатички науки и компјутерско инженерство. Студентит",
+    "rules": "Во наставната програма е предвидено да има 29 задолжителни предмети, и 12 изборни предмети.",
+    "curriculum_program": {
+      "name": "КН"
+    }
+  },
+  {
+    "code": "KN23_3",
+    "name": "Компјутерски науки",
+    "name_en": "Computer Science",
+    "cycle": "first",
+    "duration_years": 3,
+    "accreditation": "2023",
+    "language": null,
+    "url": "https://finki.ukim.mk/program/KN23_3",
+    "title": "Дипломиран инженер по информатички технологии и компјутерско инженерство, насока Компјутерски науки",
+    "title_en": "Bachelor of Science in Computer Science",
+    "ects": 180,
+    "coordinator": null,
+    "description": "Додипломските студии по компјутерски науки имаат за цел обезбедување на врвен кадар за задоволување на сé поголемата побарувачка за инженери по информатички науки и компјутерско инженерство. Студентит",
+    "rules": "Во наставната програма е предвидено да има 22 задолжителни предмети, и 9 изборни предмети.",
+    "curriculum_program": {
+      "name": "КН"
+    }
+  },
+  {
+    "code": "SIIS23",
+    "name": "Софтверско инженерство и информациски системи",
+    "name_en": "Software Engineering and Information Systems",
+    "cycle": "first",
+    "duration_years": 4,
+    "accreditation": "2023",
+    "language": null,
+    "url": "https://finki.ukim.mk/program/SIIS23",
+    "title": "Дипломиран инженер по информатички науки и компјутерско инженерство, насока софтверско инженерство и информациски системи",
+    "title_en": "Bachelor of Science in Software Engineering and Information Technologies",
+    "ects": 240,
+    "coordinator": null,
+    "description": "Овие студии имаат за цел обезбедување на врвен инженерски кадар за задоволување на се поголемата побарувачка за софтверски инженери, особено програмери. Студентите на оваа студиска програма се здобива",
+    "rules": "Во наставната програма е предвидено да има 29 задолжителни предмети, и 12 изборни предмети.",
+    "curriculum_program": {
+      "name": "СИИС"
+    }
+  },
+  {
+    "code": "SIIS23_3",
+    "name": "Софтверско инженерство и информациски системи",
+    "name_en": "Software Engineering and Information Systems",
+    "cycle": "first",
+    "duration_years": 3,
+    "accreditation": "2023",
+    "language": null,
+    "url": "https://finki.ukim.mk/program/SIIS23_3",
+    "title": "Дипломиран инженер по информатички технологии и компјутерско инженерство, насока софтверско инженерство и информациски системи",
+    "title_en": "Bachelor of Science in Software Engineering and Information Technologies",
+    "ects": 180,
+    "coordinator": null,
+    "description": "Овие студии имаат за цел обезбедување на врвен инженерски кадар за задоволување на се поголемата побарувачка за софтверски инженери, особено програмери. Студентите на оваа студиска програма се здобива",
+    "rules": "Во наставната програма е предвидено да има 22 задолжителни предмети, и 9 изборни предмети.",
+    "curriculum_program": {
+      "name": "СИИС"
+    }
+  },
+  {
+    "code": "SEIS23",
+    "name": "Software Engineering and Information Systems",
+    "name_en": null,
+    "cycle": "first",
+    "duration_years": 4,
+    "accreditation": "2023",
+    "language": "англиски",
+    "url": "https://finki.ukim.mk/program/SEIS23",
+    "title": null,
+    "title_en": "Bachelor of Science in Software Engineering and Information Technologies",
+    "ects": 240,
+    "coordinator": null,
+    "description": "Undergraduate studies in the according study program should provide for superb engineering staff capable of satisfying the ever-increasing demand for software engineers, especially programmers. Studen",
+    "rules": "In the curriculum, it is planned to have 29 compulsory subjects and 12 optional subjects. All optional subjects are divided into three difficulty groups (H1, H2 and H3). The weight is shown in the ite",
+    "curriculum_program": {
+      "name": "SEIS"
+    }
+  },
+  {
+    "code": "SEIS23_3",
+    "name": "Software Engineering and Information Systems",
+    "name_en": null,
+    "cycle": "first",
+    "duration_years": 3,
+    "accreditation": "2023",
+    "language": "англиски",
+    "url": "https://finki.ukim.mk/program/SEIS23_3",
+    "title": null,
+    "title_en": "Bachelor of Science in Software Engineering and Information Technologies",
+    "ects": 180,
+    "coordinator": null,
+    "description": "Undergraduate studies in the according study program should provide for superb engineering staff capable of satisfying the ever-increasing demand for software engineers, especially programmers. Studen",
+    "rules": "In the curriculum, it is planned to have 22 compulsory subjects and 9 elective subjects. All optional subjects are divided into three difficulty groups (H1, H2 and H3). The weight is shown in the item",
+    "curriculum_program": {
+      "name": "SEIS"
+    }
+  },
+  {
+    "code": "IMB23",
+    "name": "Интернет, мрежи и безбедност",
+    "name_en": "Internet, Networks and Security",
+    "cycle": "first",
+    "duration_years": 4,
+    "accreditation": "2023",
+    "language": null,
+    "url": "https://finki.ukim.mk/program/IMB23",
+    "title": "Дипломиран инженер по информатички науки и компјутерско инженерство, насока интернет,мрежи и безбедност",
+    "title_en": "Bachelor of Science in Internet, networks and security",
+    "ects": 240,
+    "coordinator": null,
+    "description": "Додипломските студии по Интернет, мрежи и безбедност имаат за цел обезбедување на врвен информатички кадар за задоволување на се поголемата побарувачка за мрежни инженери со практично знаење од област",
+    "rules": "Во наставната програма е предвидено да има 29 задолжителни предмети, и 12 изборни предмети.",
+    "curriculum_program": {
+      "name": "ИМБ"
+    }
+  },
+  {
+    "code": "KI23",
+    "name": "Компјутерско инженерство",
+    "name_en": "Computer Engineering",
+    "cycle": "first",
+    "duration_years": 4,
+    "accreditation": "2023",
+    "language": null,
+    "url": "https://finki.ukim.mk/program/KI23",
+    "title": "Дипломиран инженер по информатички науки и компјутерско инженерство, насока компјутерско инженерство",
+    "title_en": "Bachelor of Science in Computer Engineering",
+    "ects": 240,
+    "coordinator": null,
+    "description": "Додипломските студии по име на студиската програма имаат за цел обезбедување на врвен инженерски кадар за задоволување на се поголемата побарувачка за компјутерски инженери. Студентите на оваа студиск",
+    "rules": "Во наставната програма е предвидено да има 29 задолжителни предмети, и 12 изборни предмети.",
+    "curriculum_program": {
+      "name": "КИ"
+    }
+  },
+  {
+    "code": "PIT23",
+    "name": "Примена на информациски технологии",
+    "name_en": "Application of Information Technologies",
+    "cycle": "first",
+    "duration_years": 4,
+    "accreditation": "2023",
+    "language": null,
+    "url": "https://finki.ukim.mk/program/PIT23",
+    "title": "Дипломиран инженер по информатички науки и компјутерско инженерство, насока Примена на информациски технологии",
+    "title_en": "Bachelor of Science in Software Engineering and Information Technologies",
+    "ects": 240,
+    "coordinator": null,
+    "description": "Додипломските студии по Примена на информациски технологии имаат за цел обезбедување на врвен информатички кадар за задоволување на се поголемата побарувачка за информатички инженери кои покрај технич",
+    "rules": "Во наставната програма е предвидено да има 29 задолжителни предмети, и 12 изборни предмети.",
+    "curriculum_program": {
+      "name": "ПИТ"
+    }
+  },
+  {
+    "code": "IE23",
+    "name": "Информатичка едукација",
+    "name_en": "Informatics Education",
+    "cycle": "first",
+    "duration_years": 4,
+    "accreditation": "2023",
+    "language": null,
+    "url": "https://finki.ukim.mk/program/IE23",
+    "title": "Дипломиран инженер по информатички науки и компјутерско инженерство, насока Информатичка едукација",
+    "title_en": "Bachelor of Science in Information education",
+    "ects": 240,
+    "coordinator": null,
+    "description": "Студиите се наменети за создавање на врвен кадар во областа на информатичкото образование, пред се во средните училишта. Ваквиот образовeн кадар е подготвен да ги пренесе најновите информатички технол",
+    "rules": "Во наставната програма е предвидено да има 29 задолжителни предмети, и 12 изборни предмети.",
+    "curriculum_program": {
+      "name": "ИЕ"
+    }
+  },
+  {
+    "code": "SSP23",
+    "name": "Стручни студии за програмирање",
+    "name_en": "Vocational Studies in Programming",
+    "cycle": "first",
+    "duration_years": 2,
+    "accreditation": "2023",
+    "language": null,
+    "url": "https://finki.ukim.mk/program/SSP23",
+    "title": "Виш стручен програмер",
+    "title_en": "Bachelor of Applied Science in programming",
+    "ects": 120,
+    "coordinator": null,
+    "description": "Целта на оваа студиска програма е да одговори на ова барање и да понуди образовани програмери кои се спремни за вклучување на пазарот на трудот. Брзиот развој во областа бара и соодветни измени и моди",
+    "rules": "Во наставната програма е предвидено да има 14 задолжителни предмети, и 6 изборни предмети.",
+    "curriculum_program": {
+      "name": "ССП"
+    }
+  },
+  {
+    "code": "SSP23_3",
+    "name": "Стручни студии за програмирање",
+    "name_en": "Vocational Studies in Programming",
+    "cycle": "first",
+    "duration_years": 3,
+    "accreditation": "2023",
+    "language": null,
+    "url": "https://finki.ukim.mk/program/SSP23_3",
+    "title": "Висок стручен програмер",
+    "title_en": "Bachelor of Applied Science in programming",
+    "ects": 180,
+    "coordinator": null,
+    "description": "Целта на оваа студиска програма е да одговори на ова барање и да понуди образовани програмери кои се спремни за вклучување на пазарот на трудот. Брзиот развој во областа бара и соодветни измени и моди",
+    "rules": "Во наставната програма е предвидено да има 22 задолжителни предмети, и 9 изборни предмети.",
+    "curriculum_program": {
+      "name": "ССП"
+    }
+  },
+  {
+    "code": "KN18",
+    "name": "Компјутерски науки",
+    "name_en": "Computer Science",
+    "cycle": "first",
+    "duration_years": 4,
+    "accreditation": "2018",
+    "language": null,
+    "url": "https://finki.ukim.mk/program/KN18",
+    "title": null,
+    "title_en": null,
+    "ects": 240,
+    "coordinator": null,
+    "description": null,
+    "rules": null,
+    "curriculum_program": {
+      "name": "КН"
+    }
+  },
+  {
+    "code": "SIIS18",
+    "name": "Софтверско инженерство и информациски системи",
+    "name_en": "Software Engineering and Information Systems",
+    "cycle": "first",
+    "duration_years": 4,
+    "accreditation": "2018",
+    "language": null,
+    "url": "https://finki.ukim.mk/program/SIIS18",
+    "title": null,
+    "title_en": null,
+    "ects": 240,
+    "coordinator": null,
+    "description": null,
+    "rules": null,
+    "curriculum_program": {
+      "name": "СИИС"
+    }
+  },
+  {
+    "code": "SEIS18",
+    "name": "Software Engineering and Information Systems",
+    "name_en": null,
+    "cycle": "first",
+    "duration_years": 4,
+    "accreditation": "2018",
+    "language": "англиски",
+    "url": "https://finki.ukim.mk/program/SEIS18",
+    "title": null,
+    "title_en": "Bachelor of Science in Software Engineering and Information Technologies",
+    "ects": 240,
+    "coordinator": null,
+    "description": "Undergraduate studies in the according study program should provide for superb engineering staff capable of satisfying the ever-increasing demand for software engineers, especially programmers. Studen",
+    "rules": "In the curriculum, it is planned to have 29 compulsory subjects and 12 optional subjects. All optional subjects are divided into three difficulty groups (H1, H2 and H3). The weight is shown in the ite",
+    "curriculum_program": {
+      "name": "SEIS"
+    }
+  },
+  {
+    "code": "PET18",
+    "name": "Примена на информациски технологии",
+    "name_en": "Application of Information Technologies",
+    "cycle": "first",
+    "duration_years": 4,
+    "accreditation": "2018",
+    "language": null,
+    "url": "https://finki.ukim.mk/program/PET18",
+    "title": null,
+    "title_en": null,
+    "ects": 240,
+    "coordinator": null,
+    "description": null,
+    "rules": null,
+    "curriculum_program": null
+  },
+  {
+    "code": "KE18",
+    "name": "Компјутерска едукација",
+    "name_en": "Computer Education",
+    "cycle": "first",
+    "duration_years": 4,
+    "accreditation": "2018",
+    "language": null,
+    "url": "https://finki.ukim.mk/program/KE18",
+    "title": null,
+    "title_en": null,
+    "ects": 240,
+    "coordinator": null,
+    "description": null,
+    "rules": null,
+    "curriculum_program": {
+      "name": "КЕ"
+    }
+  },
+  {
+    "code": "BKK23_2",
+    "name": "Безбедност, криптографија и кодирање",
+    "name_en": "Security, Cryptography and Coding",
+    "cycle": "second",
+    "duration_years": 2,
+    "accreditation": "2023",
+    "language": null,
+    "url": "https://finki.ukim.mk/master-program/BKK23_2",
+    "title": "Магистер по Безбедност, криптографија и кодирање",
+    "title_en": "Master of Science in Security, Cryptography and Coding",
+    "ects": 120,
+    "coordinator": {
+      "name": "Весна Димитрова"
+    },
+    "description": null,
+    "rules": null,
+    "curriculum_program": null
+  },
+  {
+    "code": "BI23_1",
+    "name": "Биоинформатика",
+    "name_en": "Bioinformatics",
+    "cycle": "second",
+    "duration_years": 1,
+    "accreditation": "2023",
+    "language": null,
+    "url": "https://finki.ukim.mk/master-program/BI23_1",
+    "title": "Магистер по Биоинформатика",
+    "title_en": "Master of Science in Bioinformatics",
+    "ects": 60,
+    "coordinator": {
+      "name": "Слободан Калајџиски"
+    },
+    "description": null,
+    "rules": null,
+    "curriculum_program": null
+  },
+  {
+    "code": "BI23_2",
+    "name": "Биоинформатика",
+    "name_en": "Bioinformatics",
+    "cycle": "second",
+    "duration_years": 2,
+    "accreditation": "2023",
+    "language": null,
+    "url": "https://finki.ukim.mk/master-program/BI23_2",
+    "title": "Магистер по Биоинформатика",
+    "title_en": "Master of Science in Bioinformatics",
+    "ects": 120,
+    "coordinator": {
+      "name": "Слободан Калајџиски"
+    },
+    "description": null,
+    "rules": null,
+    "curriculum_program": null
+  },
+  {
+    "code": "CC23_1",
+    "name": "Пресметување во облак",
+    "name_en": "Cloud Computing",
+    "cycle": "second",
+    "duration_years": 1,
+    "accreditation": "2023",
+    "language": null,
+    "url": "https://finki.ukim.mk/master-program/CC23_1",
+    "title": "Магистер по Пресметување во облак",
+    "title_en": "Master of Science in Cloud Computing",
+    "ects": 60,
+    "coordinator": {
+      "name": "Магдалена Костоска Ѓорчевска"
+    },
+    "description": null,
+    "rules": null,
+    "curriculum_program": null
+  },
+  {
+    "code": "CC23_2",
+    "name": "Пресметување во облак",
+    "name_en": "Cloud Computing",
+    "cycle": "second",
+    "duration_years": 2,
+    "accreditation": "2023",
+    "language": null,
+    "url": "https://finki.ukim.mk/master-program/CC23_2",
+    "title": "Магистер по Пресметување во облак",
+    "title_en": "Master of Science in Cloud Computing",
+    "ects": 120,
+    "coordinator": {
+      "name": "Магдалена Костоска Ѓорчевска"
+    },
+    "description": null,
+    "rules": null,
+    "curriculum_program": null
+  },
+  {
+    "code": "ID",
+    "name": "Информатика",
+    "name_en": null,
+    "cycle": "third",
+    "duration_years": null,
+    "accreditation": null,
+    "language": null,
+    "url": "https://finki.ukim.mk/studii-2/vidovi-studii/doktorski-studii/id/",
+    "title": "Доктор по природно-математички науки, специјалност информатика",
+    "title_en": "PhD in natural sciences, specialty in informatics",
+    "ects": null,
+    "coordinator": null,
+    "description": null,
+    "rules": null,
+    "curriculum_program": null
+  },
+  {
+    "code": "KNID",
+    "name": "Компјутерски науки и инженерство",
+    "name_en": null,
+    "cycle": "third",
+    "duration_years": null,
+    "accreditation": null,
+    "language": null,
+    "url": "https://finki.ukim.mk/studii-2/vidovi-studii/doktorski-studii/knid/",
+    "title": "Доктор по техничко-технолошки науки, специјалност компјутерски науки и инженерство",
+    "title_en": "PhD in technical sciences in the field of computer science and engineering",
+    "ects": null,
+    "coordinator": null,
+    "description": null,
+    "rules": null,
+    "curriculum_program": null
+  }
+]
