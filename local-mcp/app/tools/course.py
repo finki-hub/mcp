@@ -329,7 +329,11 @@ def _course_snapshot() -> _Snapshot:
     if _snapshots and _snapshots[0].records is records:
         return _snapshots[0]
 
-    courses = [_build_course(record) for record in records]
+    # courses.json also carries the master's courses (cycle "second"), which
+    # have no undergraduate accreditation; get_course covers them.
+    courses = [
+        _build_course(record) for record in records if record.get("cycle") != "second"
+    ]
     years = {
         year
         for course in courses
