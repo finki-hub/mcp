@@ -196,6 +196,30 @@ def test_unlinked_slot_keeps_the_timetable_names() -> None:
     assert entry.staff == ["Демонстратор 4"]
 
 
+def test_a_joint_class_is_found_by_either_course() -> None:
+    _SLOTS.append(
+        _slot(
+            subject="Избрани теми од математика / Криптографија",
+            course=None,
+            courses=[
+                {"course": {"id": 20, "name": "Криптографија"}},
+                {"course": {"id": 21, "name": "Избрани теми од математика"}},
+            ],
+            groups="1г-ПИТ",
+            day=4,
+            starts="12:00",
+        ),
+    )
+    try:
+        result = schedule_of(course="Криптографија", day=TimetableDay.THURSDAY)
+    finally:
+        _SLOTS.pop()
+
+    assert [e.course for e in result.entries or []] == [
+        "Избрани теми од математика / Криптографија",
+    ]
+
+
 def test_linked_and_unlinked_teachers_are_both_listed() -> None:
     (entry,) = schedule_of(group="1г-ИМБ").entries or []
 

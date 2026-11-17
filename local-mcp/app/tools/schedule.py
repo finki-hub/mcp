@@ -33,6 +33,8 @@ _SLOT_FIELDS = (
     "teachers",
     "course.id",
     "course.name",
+    "courses.course.id",
+    "courses.course.name",
     "room.id",
     "room.name",
     "room.location",
@@ -95,13 +97,29 @@ def _staff_names(slot: dict) -> list[str] | None:
     return names or None
 
 
-def to_entry(slot: dict) -> ScheduleEntry:
+def _courses(slot: dict) -> dict[int, str]:
+    # Every course the slot is held for: both parts of a joint class
+    # ("A / B"), else its one course.
+    linked = {
+        link["course"]["id"]: link["course"]["name"]
+        for link in slot.get("courses") or []
+        if isinstance(link.get("course"), dict)
+    }
     course = slot.get("course")
+    if isinstance(course, dict):
+        linked.setdefault(course["id"], course["name"])
+    return linked
+
+
+def course_ids(slot: dict) -> set[int]:
+    return set(_courses(slot))
+
+
+def to_entry(slot: dict) -> ScheduleEntry:
+    names = sorted(_courses(slot).values())
     room = slot.get("room")
     return ScheduleEntry(
-        course=course["name"]
-        if isinstance(course, dict)
-        else slot.get("subject") or "",
+        course=" / ".join(names) if names else slot.get("subject") or "",
         kind=slot.get("kind") or None,
         day=_DAYS[slot["day"]],
         starts=slot.get("starts"),
@@ -178,7 +196,7 @@ def schedule(
         slot
         for slot in timetable_slots(timetable["id"])
         if ("staff" not in wanted or wanted["staff"] in staff_ids(slot))
-        and ("course" not in wanted or _related_id(slot, "course") == wanted["course"])
+        and ("course" not in wanted or wanted["course"] in course_ids(slot))
         and ("room" not in wanted or _related_id(slot, "room") == wanted["room"])
         and (group is None or _in_group(slot, group))
         and (day is None or _DAYS.get(slot.get("day") or 0) == day)

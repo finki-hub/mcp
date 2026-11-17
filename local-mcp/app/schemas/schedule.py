@@ -7,7 +7,10 @@ from app.schemas.timetable import TimetableDay
 class ScheduleEntry(PrunedModel):
     course: str = Field(
         ...,
-        description="Предмет; името од распоредот кога не е поврзан со предмет",
+        description=(
+            "Предмет; за заеднички час двата предмета со „/“, а името од "
+            "распоредот кога не е поврзан со предмет"
+        ),
         examples=["Вештачка интелигенција"],
     )
     kind: str | None = Field(
