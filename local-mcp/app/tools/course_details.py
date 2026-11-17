@@ -2,6 +2,7 @@ from app.schemas.course_details import (
     CourseCurriculum,
     CourseDetails,
     CourseInclude,
+    CourseInProgram,
     CourseSyllabusText,
     CourseTeacher,
 )
@@ -20,7 +21,15 @@ from app.utils.http_client import get_directus_items
 
 _NOT_OFFERED = "нема"
 
-_BASE_FIELDS = ("id", "name", "name_en", "abbreviation", "status", "tags")
+_BASE_FIELDS = (
+    "id",
+    "name",
+    "name_en",
+    "abbreviation",
+    "status",
+    "tags",
+    "degree_cycle",
+)
 _INCLUDED_FIELDS: dict[CourseInclude, tuple[str, ...]] = {
     CourseInclude.CURRICULA: (
         "curricula.credits",
@@ -42,6 +51,13 @@ _INCLUDED_FIELDS: dict[CourseInclude, tuple[str, ...]] = {
     CourseInclude.ENROLLMENTS: (
         "enrollments.count",
         "enrollments.academic_year.label",
+    ),
+    CourseInclude.PROGRAMS: (
+        "degree_programs.program.code",
+        "degree_programs.kind",
+        "degree_programs.semester",
+        "degree_programs.group",
+        "degree_programs.code",
     ),
 }
 
@@ -104,6 +120,28 @@ def _enrollments(record: dict) -> dict[str, int] | None:
         if isinstance(row.get("academic_year"), dict) and row.get("count")
     }
     return dict(sorted(counts.items(), reverse=True)) or None
+
+
+def _programs(record: dict) -> list[CourseInProgram] | None:
+    rows = [
+        CourseInProgram(
+            program=row["program"]["code"],
+            kind=row["kind"],
+            semester=row.get("semester"),
+            group=row.get("group"),
+            code=row.get("code"),
+        )
+        for row in record.get("degree_programs") or []
+        if isinstance(row.get("program"), dict)
+    ]
+    # Mandatory first, then by program.
+    return (
+        sorted(
+            rows,
+            key=lambda row: (row.kind != "mandatory", row.program, row.semester or 0),
+        )
+        or None
+    )
 
 
 def _teaching(course_id: int) -> tuple[str | None, list[CourseTeacher]]:
@@ -171,6 +209,7 @@ def get_course(
         abbreviation=record.get("abbreviation") or None,
         status=record.get("status") or None,
         tags=record.get("tags") or None,
+        cycle=record.get("degree_cycle") or None,
     )
     if CourseInclude.CURRICULA in wanted:
         details.curricula = _curricula(record) or None
@@ -180,6 +219,8 @@ def get_course(
         details.equivalencies = _equivalencies(record)
     if CourseInclude.ENROLLMENTS in wanted:
         details.enrollments = _enrollments(record)
+    if CourseInclude.PROGRAMS in wanted:
+        details.programs = _programs(record)
     if CourseInclude.TEACHING in wanted:
         details.teaching_timetable, teachers = _teaching(record["id"])
         details.teaching = teachers or None

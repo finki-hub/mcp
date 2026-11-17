@@ -1,3 +1,4 @@
+from collections import Counter
 from collections.abc import Callable
 from typing import NamedTuple
 
@@ -15,7 +16,7 @@ MIN_QUERY_LENGTH = 3
 
 _STAFF_PARAMS: dict[str, str | int] = {"fields": "id,name", "limit": -1}
 _COURSE_PARAMS: dict[str, str | int] = {
-    "fields": "id,name,name_en,abbreviation",
+    "fields": "id,name,name_en,abbreviation,degree_cycle",
     "limit": -1,
 }
 _ROOM_PARAMS: dict[str, str | int] = {"fields": "id,name,location", "limit": -1}
@@ -74,8 +75,26 @@ def find_staff(query: str) -> Found:
     )
 
 
+_CYCLE_LABELS = {"first": "прв циклус", "second": "втор циклус", "third": "трет циклус"}
+
+
+def course_labeller(courses: list[dict]) -> Callable[[dict], str]:
+    # A name two courses share (an undergraduate and a master's course)
+    # carries its cycle, so each can be named apart.
+    shared = Counter(transliterate_and_normalize(record["name"]) for record in courses)
+
+    def label(record: dict) -> str:
+        cycle = _CYCLE_LABELS.get(record.get("degree_cycle") or "")
+        if shared[transliterate_and_normalize(record["name"])] > 1 and cycle:
+            return f"{record['name']} ({cycle})"
+        return record["name"]
+
+    return label
+
+
 def find_course(query: str) -> Found:
     courses = get_directus_items("courses", _COURSE_PARAMS)
+    label = course_labeller(courses)
     normalized = transliterate_and_normalize(query)
     exact = [
         record
@@ -84,10 +103,21 @@ def find_course(query: str) -> Found:
         and normalized
         in {
             transliterate_and_normalize(value)
-            for key in ("abbreviation", "name", "name_en")
-            if (value := record.get(key))
+            for value in (
+                record.get("abbreviation"),
+                record.get("name"),
+                record.get("name_en"),
+                label(record),
+            )
+            if value
         }
     ]
+    if len(exact) > 1:
+        # The cycle in the query decides between same-named courses.
+        labelled = [
+            r for r in exact if transliterate_and_normalize(label(r)) == normalized
+        ]
+        exact = labelled or exact
     if len(exact) == 1:
         return Found(exact[0])
     names = resolve_abbreviation(query, build_abbreviation_index(courses))
@@ -97,9 +127,9 @@ def find_course(query: str) -> Found:
         return Found(
             None,
             f"Повеќе предмети одговараат на „{query}“",
-            names or [record["name"] for record in exact],
+            names or [label(record) for record in exact],
         )
-    return _by_label(query, courses, lambda record: record["name"], "предмети")
+    return _by_label(query, courses, label, "предмети")
 
 
 def room_label(record: dict) -> str:

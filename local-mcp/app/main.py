@@ -899,8 +899,9 @@ def make_app(settings: Settings) -> MCPServer:
             "статус по програма во секоја акредитација), `syllabus` (цели и содржина "
             "по недели), `equivalencies` (еквивалентни предмети низ акредитациите), "
             "`enrollments` (запишани по година), `teaching` (наставници од најновиот "
-            "распоред во кој се држи) и `schedule` (термини во тековниот распоред). "
-            "Вклучи само што ти треба."
+            "распоред во кој се држи), `schedule` (термини во тековниот распоред) и "
+            "`programs` (магистерски програми во кои е, со вид, семестар и група). "
+            "Опфаќа и магистерски предмети. Вклучи само што ти треба."
         ),
         annotations=ToolAnnotations(
             title="Предмет со акредитации, силабус и наставници",
@@ -928,7 +929,7 @@ def make_app(settings: Settings) -> MCPServer:
             Field(
                 description=(
                     "Што да се вклучи: curricula, syllabus, equivalencies, "
-                    "enrollments, teaching, schedule."
+                    "enrollments, teaching, schedule, programs."
                 ),
                 examples=[["curricula", "teaching"]],
             ),
