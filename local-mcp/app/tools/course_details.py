@@ -6,7 +6,12 @@ from app.schemas.course_details import (
     CourseTeacher,
 )
 from app.tools.directus_lookup import find_course
-from app.tools.schedule import current_timetable, sorted_entries, timetable_slots
+from app.tools.schedule import (
+    course_ids,
+    current_timetable,
+    sorted_entries,
+    timetable_slots,
+)
 from app.utils.http_client import get_directus_items
 
 # A course from Directus, with what the caller includes: its place in each
@@ -186,7 +191,7 @@ def get_course(
                 [
                     slot
                     for slot in timetable_slots(timetable["id"])
-                    if (slot.get("course") or {}).get("id") == record["id"]
+                    if record["id"] in course_ids(slot)
                 ],
             )
     return details
