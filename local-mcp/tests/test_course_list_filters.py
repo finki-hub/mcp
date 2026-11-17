@@ -210,3 +210,13 @@ def test_sort_ranks_courses_with_no_enrollment_last() -> None:
     result = list_courses(sort_by_participants=True)
 
     assert [m.participants for m in result.items] == [12, 6, 0, 0]
+
+
+def test_masters_courses_are_left_out(monkeypatch: pytest.MonkeyPatch) -> None:
+    master = {**_COURSES[0], "name": "Data Science", "cycle": "second"}
+    monkeypatch.setattr(course_tools, "get_courses", lambda: [*_COURSES, master])
+
+    names = {match.name for match in list_courses(limit=500).items}
+
+    assert "Data Science" not in names
+    assert _COURSES[0]["name"] in names
