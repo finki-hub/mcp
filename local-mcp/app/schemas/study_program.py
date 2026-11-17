@@ -11,6 +11,52 @@ class StudyCycle(StrEnum):
     THIRD = "трет"
 
 
+class ProgramSemester(PrunedModel):
+    semester: int = Field(..., description="Семестар", examples=[1])
+    mandatory: list[str] | None = Field(
+        None,
+        description="Задолжителни предмети, „код име“",
+        examples=[["DCS-Z-01 Применета криптографија"]],
+    )
+    electives: list[str] | None = Field(
+        None,
+        description="Изборни места во семестарот и од кои листи",
+        examples=[["2 од програмата", "1 од програмата или факултетот"]],
+    )
+
+
+class ProgramElective(PrunedModel):
+    course: str = Field(
+        ...,
+        description="„код име“",
+        examples=["DCS-I-05 Теорија на кодирање и примени"],
+    )
+    semester: int | None = Field(None, description="Препорачан семестар", examples=[3])
+    term: str | None = Field(None, description="зимски или летен", examples=["зимски"])
+
+
+class ProgramCurriculum(PrunedModel):
+    semesters: list[ProgramSemester] = Field(
+        ..., description="Семестрите на програмата"
+    )
+    program_electives: list[ProgramElective] | None = Field(
+        None,
+        description="Изборни предмети од листата на програмата",
+    )
+    faculty_electives: list[ProgramElective] | None = Field(
+        None,
+        description=(
+            "Изборни предмети од листата на факултетот (само кога е пронајдена "
+            "една програма)"
+        ),
+    )
+    faculty_elective_count: int | None = Field(
+        None,
+        description="Колку изборни предмети има листата на факултетот",
+        examples=[180],
+    )
+
+
 class StudyProgramInfo(PrunedModel):
     code: str = Field(
         ...,
@@ -85,6 +131,13 @@ class StudyProgramInfo(PrunedModel):
         description=(
             "Општи информации за програмата, на јазикот на кој ги дава "
             "страницата (само со `details`)"
+        ),
+    )
+    curriculum: ProgramCurriculum | None = Field(
+        None,
+        description=(
+            "Распоред на магистерска програма: задолжителни предмети и изборни "
+            "места по семестар и изборните листи (само со `details`)"
         ),
     )
     rules: str | None = Field(

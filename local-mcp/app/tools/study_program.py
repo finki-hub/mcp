@@ -1,6 +1,12 @@
 from app.schemas.course import AccreditationYear
-from app.schemas.study_program import StudyCycle, StudyProgramInfo
-from app.utils.http_client import get_degree_programs
+from app.schemas.study_program import (
+    ProgramCurriculum,
+    ProgramElective,
+    ProgramSemester,
+    StudyCycle,
+    StudyProgramInfo,
+)
+from app.utils.http_client import get_degree_programs, get_directus_items
 from app.utils.query_matcher import transliterate_and_normalize
 
 # The most programs `details` adds the description and rules to; a broader
@@ -42,6 +48,83 @@ def _to_program(record: dict) -> StudyProgramInfo:
     )
 
 
+_TERMS = {"winter": "зимски", "summer": "летен"}
+_SLOT_KINDS = {
+    "program": "од програмата",
+    "program_or_faculty": "од програмата или факултетот",
+}
+
+
+def _course_name(row: dict) -> str:
+    course = row.get("course")
+    name = course.get("name") if isinstance(course, dict) else None
+    return f"{row['code']} {name}" if name else row["code"]
+
+
+def _elective(row: dict) -> ProgramElective:
+    group = row.get("group") or ""
+    return ProgramElective(
+        course=_course_name(row),
+        semester=row.get("semester"),
+        term=_TERMS.get(group.rsplit("_", 1)[-1]),
+    )
+
+
+def _curriculum(code: str, *, with_faculty: bool) -> ProgramCurriculum | None:
+    rows = get_directus_items(
+        "degree_program_courses",
+        {
+            "fields": "code,kind,semester,group,course.name",
+            "filter[program][code][_eq]": code,
+            "sort": "semester,code",
+            "limit": -1,
+        },
+    )
+    if not rows:
+        return None
+    slots = get_directus_items(
+        "degree_program_slots",
+        {
+            "fields": "semester,kind,count",
+            "filter[program][code][_eq]": code,
+            "limit": -1,
+        },
+    )
+    semesters = sorted(
+        {row["semester"] for row in rows if row["kind"] == "mandatory"}
+        | {slot["semester"] for slot in slots},
+    )
+    layout = [
+        ProgramSemester(
+            semester=semester,
+            mandatory=[
+                _course_name(row)
+                for row in rows
+                if row["kind"] == "mandatory" and row["semester"] == semester
+            ]
+            or None,
+            electives=[
+                f"{slot['count']} {_SLOT_KINDS.get(slot['kind'], slot['kind'])}"
+                for slot in slots
+                if slot["semester"] == semester
+            ]
+            or None,
+        )
+        for semester in semesters
+    ]
+    electives = [row for row in rows if row["kind"] == "elective"]
+    faculty = [
+        row for row in electives if (row.get("group") or "").startswith("faculty")
+    ]
+    return ProgramCurriculum(
+        semesters=layout,
+        program_electives=[_elective(row) for row in electives if row not in faculty]
+        or None,
+        faculty_electives=[_elective(row) for row in faculty] if with_faculty else None,
+        faculty_elective_count=len(faculty) or None,
+    )
+
+
 def _matches_query(program: StudyProgramInfo, query: str) -> bool:
     fields = (program.code, program.abbreviation, program.name, program.name_en)
     return any(query in transliterate_and_normalize(field) for field in fields if field)
@@ -65,11 +148,15 @@ def list_study_programs(
     ]
     if not details or len(matches) > MAX_DETAILED_PROGRAMS:
         return [program for program, _record in matches]
+    with_faculty = len(matches) == 1
     return [
         program.model_copy(
             update={
                 "description": record.get("description"),
                 "rules": record.get("rules"),
+                "curriculum": _curriculum(program.code, with_faculty=with_faculty)
+                if program.cycle == StudyCycle.SECOND
+                else None,
             },
         )
         for program, record in matches

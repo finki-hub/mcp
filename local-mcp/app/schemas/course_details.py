@@ -13,6 +13,37 @@ class CourseInclude(StrEnum):
     ENROLLMENTS = "enrollments"
     TEACHING = "teaching"
     SCHEDULE = "schedule"
+    PROGRAMS = "programs"
+
+
+class ProgramGroup(StrEnum):
+    PROGRAM_WINTER = "program_winter"
+    PROGRAM_SUMMER = "program_summer"
+    FACULTY_WINTER = "faculty_winter"
+    FACULTY_SUMMER = "faculty_summer"
+    NAMED = "named"
+
+
+class CourseInProgram(PrunedModel):
+    program: str = Field(..., description="Код на програмата", examples=["BKK23_2"])
+    kind: str = Field(
+        ...,
+        description="mandatory (задолжителен) или elective (изборен)",
+        examples=["mandatory"],
+    )
+    semester: int | None = Field(
+        None,
+        description="Семестар; за изборен препорачаниот",
+        examples=[3],
+    )
+    group: ProgramGroup | None = Field(
+        None,
+        description=(
+            "Изборна група: од програмата или од факултетот, зимска или летна, "
+            "или именувана"
+        ),
+    )
+    code: str | None = Field(None, description="Код на предметот во програмата")
 
 
 class CourseCurriculum(PrunedModel):
@@ -65,6 +96,11 @@ class CourseDetails(PrunedModel):
     name: str = Field(..., description="Име на предметот", examples=["Криптографија"])
     name_en: str | None = Field(None, description="Име на англиски")
     abbreviation: str | None = Field(None, description="Кратенка", examples=["АПС"])
+    cycle: str | None = Field(
+        None,
+        description="Циклус: first (додипломски) или second (магистерски)",
+        examples=["second"],
+    )
     status: str | None = Field(None, description="Статус", examples=["active"])
     tags: str | None = Field(None, description="Ознаки", examples=["security"])
     curricula: list[CourseCurriculum] | None = Field(
@@ -106,6 +142,13 @@ class CourseDetails(PrunedModel):
     schedule: list[ScheduleEntry] | None = Field(
         None,
         description="Термини во тековниот главен распоред (со `schedule`)",
+    )
+    programs: list[CourseInProgram] | None = Field(
+        None,
+        description=(
+            "Магистерските програми во кои е предметот, со вид, семестар и група "
+            "(со `programs`)"
+        ),
     )
     error: str | None = Field(None, description="Порака за грешка")
     suggestions: list[str] | None = Field(None, description="Предлози")
