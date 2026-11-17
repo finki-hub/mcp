@@ -58,7 +58,8 @@ _SLOT_KINDS = {
 def _course_name(row: dict) -> str:
     course = row.get("course")
     name = course.get("name") if isinstance(course, dict) else None
-    return f"{row['code']} {name}" if name else row["code"]
+    code = row.get("code") or ""
+    return f"{code} {name}".strip() if name else code
 
 
 def _elective(row: dict) -> ProgramElective:
@@ -91,8 +92,14 @@ def _curriculum(code: str, *, with_faculty: bool) -> ProgramCurriculum | None:
         },
     )
     semesters = sorted(
-        {row["semester"] for row in rows if row["kind"] == "mandatory"}
-        | {slot["semester"] for slot in slots},
+        {
+            semester
+            for semester in [
+                *(row.get("semester") for row in rows if row["kind"] == "mandatory"),
+                *(slot.get("semester") for slot in slots),
+            ]
+            if isinstance(semester, int)
+        },
     )
     layout = [
         ProgramSemester(
@@ -112,14 +119,15 @@ def _curriculum(code: str, *, with_faculty: bool) -> ProgramCurriculum | None:
         )
         for semester in semesters
     ]
-    electives = [row for row in rows if row["kind"] == "elective"]
-    faculty = [
-        row for row in electives if (row.get("group") or "").startswith("faculty")
-    ]
+    faculty: list[dict] = []
+    own: list[dict] = []
+    for row in rows:
+        if row["kind"] == "elective":
+            group = row.get("group") or ""
+            (faculty if group.startswith("faculty") else own).append(row)
     return ProgramCurriculum(
         semesters=layout,
-        program_electives=[_elective(row) for row in electives if row not in faculty]
-        or None,
+        program_electives=[_elective(row) for row in own] or None,
         faculty_electives=[_elective(row) for row in faculty] if with_faculty else None,
         faculty_elective_count=len(faculty) or None,
     )

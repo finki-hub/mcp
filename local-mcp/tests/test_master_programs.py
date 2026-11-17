@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from app.schemas.course_details import CourseInclude, ProgramGroup
+from app.schemas.course_details import CourseInclude
 from app.tools import course_details, directus_lookup, study_program
 from app.tools.course_details import get_course
 from app.tools.directus_lookup import find_course
@@ -132,7 +132,7 @@ def test_a_course_lists_its_programs_mandatory_first() -> None:
     assert course.cycle == "second"
     assert [(p.program, p.kind, p.group) for p in course.programs or []] == [
         ("BKK23_2", "mandatory", None),
-        ("SI23_2", "elective", ProgramGroup.FACULTY_WINTER),
+        ("SI23_2", "elective", "faculty_winter"),
     ]
 
 

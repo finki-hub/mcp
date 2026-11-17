@@ -16,14 +16,6 @@ class CourseInclude(StrEnum):
     PROGRAMS = "programs"
 
 
-class ProgramGroup(StrEnum):
-    PROGRAM_WINTER = "program_winter"
-    PROGRAM_SUMMER = "program_summer"
-    FACULTY_WINTER = "faculty_winter"
-    FACULTY_SUMMER = "faculty_summer"
-    NAMED = "named"
-
-
 class CourseInProgram(PrunedModel):
     program: str = Field(..., description="Код на програмата", examples=["BKK23_2"])
     kind: str = Field(
@@ -36,12 +28,13 @@ class CourseInProgram(PrunedModel):
         description="Семестар; за изборен препорачаниот",
         examples=[3],
     )
-    group: ProgramGroup | None = Field(
+    group: str | None = Field(
         None,
         description=(
-            "Изборна група: од програмата или од факултетот, зимска или летна, "
-            "или именувана"
+            "Изборна група: program_winter, program_summer, faculty_winter, "
+            "faculty_summer или named"
         ),
+        examples=["faculty_winter"],
     )
     code: str | None = Field(None, description="Код на предметот во програмата")
 

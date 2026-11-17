@@ -81,11 +81,11 @@ _CYCLE_LABELS = {"first": "прв циклус", "second": "втор циклу�
 def course_labeller(courses: list[dict]) -> Callable[[dict], str]:
     # A name two courses share (an undergraduate and a master's course)
     # carries its cycle, so each can be named apart.
-    shared = Counter(record["name"] for record in courses)
+    shared = Counter(transliterate_and_normalize(record["name"]) for record in courses)
 
     def label(record: dict) -> str:
         cycle = _CYCLE_LABELS.get(record.get("degree_cycle") or "")
-        if shared[record["name"]] > 1 and cycle:
+        if shared[transliterate_and_normalize(record["name"])] > 1 and cycle:
             return f"{record['name']} ({cycle})"
         return record["name"]
 

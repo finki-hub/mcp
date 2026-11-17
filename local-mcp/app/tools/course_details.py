@@ -135,7 +135,13 @@ def _programs(record: dict) -> list[CourseInProgram] | None:
         if isinstance(row.get("program"), dict)
     ]
     # Mandatory first, then by program.
-    return sorted(rows, key=lambda row: (row.kind != "mandatory", row.program)) or None
+    return (
+        sorted(
+            rows,
+            key=lambda row: (row.kind != "mandatory", row.program, row.semester or 0),
+        )
+        or None
+    )
 
 
 def _teaching(course_id: int) -> tuple[str | None, list[CourseTeacher]]:
