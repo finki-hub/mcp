@@ -6,6 +6,8 @@ from unittest.mock import Mock
 
 import pytest
 
+from app.schemas.announcement import Board
+from app.schemas.course_details import CourseInclude
 from app.utils import analytics
 
 
@@ -81,4 +83,45 @@ def test_track_tool_generic_types() -> None:
     ) == (
         "P",
         "R",
+    )
+
+
+def test_track_tool_emits_fixed_choices_by_value_and_text_by_length(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    capture = Mock()
+    monkeypatch.setattr(analytics, "capture_tool_called", capture)
+    monkeypatch.setattr(analytics.time, "perf_counter", Mock(side_effect=[1.0, 1.0]))
+
+    @analytics.track_tool("choices")
+    async def tool(
+        *,
+        query: str,
+        board: Board,
+        include: list[CourseInclude],
+        limit: int,
+    ) -> None:
+        return None
+
+    asyncio.run(
+        _await_result(
+            tool(
+                query="упис",
+                board=Board.EVENTS,
+                include=[CourseInclude.UNLOCKS, CourseInclude.CURRICULA],
+                limit=5,
+            )
+        )
+    )
+
+    capture.assert_called_once_with(
+        "choices",
+        0.0,
+        success=True,
+        properties={
+            "arg_count": 4,
+            "query_length": 4,
+            "board": "настани",
+            "include": ["curricula", "unlocks"],
+        },
     )

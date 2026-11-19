@@ -3,6 +3,7 @@ import logging
 import time
 import traceback
 from collections.abc import Awaitable, Callable
+from enum import Enum
 
 from posthog import Posthog
 
@@ -133,11 +134,21 @@ def _arg_metadata(
     args: tuple[object, ...],
     kwargs: dict[str, object],
 ) -> dict[str, object]:
-    # Tool arguments may contain user query text, so emit only lengths and counts.
+    # Tool arguments may contain user query text, so free text is emitted only
+    # as its length. A choice from a fixed list (an Enum, such as `board` or
+    # the `include` options) carries no user text and is emitted as its value.
     metadata: dict[str, object] = {"arg_count": len(args) + len(kwargs)}
     for name, value in kwargs.items():
-        if isinstance(value, str):
+        if isinstance(value, Enum):
+            metadata[name] = value.value
+        elif isinstance(value, str):
             metadata[f"{name}_length"] = len(value)
+        elif (
+            isinstance(value, list | tuple)
+            and value
+            and all(isinstance(item, Enum) for item in value)
+        ):
+            metadata[name] = sorted(str(item.value) for item in value)
 
     return metadata
 
