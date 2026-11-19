@@ -14,6 +14,7 @@ class CourseInclude(StrEnum):
     TEACHING = "teaching"
     SCHEDULE = "schedule"
     PROGRAMS = "programs"
+    UNLOCKS = "unlocks"
 
 
 class CourseInProgram(PrunedModel):
@@ -37,6 +38,20 @@ class CourseInProgram(PrunedModel):
         examples=["faculty_winter"],
     )
     code: str | None = Field(None, description="Код на предметот во програмата")
+
+
+class CourseUnlock(PrunedModel):
+    course: str = Field(
+        ...,
+        description="Предмет чии предуслови го вклучуваат овој",
+        examples=["Напредни бази на податоци"],
+    )
+    accreditation: str = Field(..., description="Акредитација", examples=["2023"])
+    prerequisites: str = Field(
+        ...,
+        description="Целиот предуслов како што го пишува акредитацијата",
+        examples=["Бази на податоци"],
+    )
 
 
 class CourseCurriculum(PrunedModel):
@@ -141,6 +156,14 @@ class CourseDetails(PrunedModel):
         description=(
             "Магистерските програми во кои е предметот, со вид, семестар и група "
             "(со `programs`)"
+        ),
+    )
+    unlocks: list[CourseUnlock] | None = Field(
+        None,
+        description=(
+            "Предметите чии предуслови го вклучуваат овој, по акредитација (со "
+            "`unlocks`). Предусловот може да бара и други предмети („и“) или да "
+            "нуди замена („или“)."
         ),
     )
     error: str | None = Field(None, description="Порака за грешка")

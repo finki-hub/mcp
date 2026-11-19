@@ -7,6 +7,7 @@ from app.schemas.course_details import (
     CourseTeacher,
 )
 from app.tools.directus_lookup import find_course
+from app.tools.prerequisites import courses_unlocked_by
 from app.tools.schedule import (
     course_ids,
     current_timetable,
@@ -52,6 +53,8 @@ _INCLUDED_FIELDS: dict[CourseInclude, tuple[str, ...]] = {
         "enrollments.count",
         "enrollments.academic_year.label",
     ),
+    # The names the accreditations give the course, which prerequisites use.
+    CourseInclude.UNLOCKS: ("curricula.entry.name",),
     CourseInclude.PROGRAMS: (
         "degree_programs.program.code",
         "degree_programs.kind",
@@ -221,6 +224,13 @@ def get_course(
         details.enrollments = _enrollments(record)
     if CourseInclude.PROGRAMS in wanted:
         details.programs = _programs(record)
+    if CourseInclude.UNLOCKS in wanted:
+        names = [record["name"]] + [
+            link["entry"]["name"]
+            for link in record.get("curricula") or []
+            if isinstance(link.get("entry"), dict) and link["entry"].get("name")
+        ]
+        details.unlocks = courses_unlocked_by(names) or None
     if CourseInclude.TEACHING in wanted:
         details.teaching_timetable, teachers = _teaching(record["id"])
         details.teaching = teachers or None

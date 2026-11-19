@@ -1,8 +1,17 @@
 from datetime import date, datetime
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.base import PrunedModel
+
+
+class Board(StrEnum):
+    """The boards of finki.ukim.mk the announcement tools read."""
+
+    ANNOUNCEMENTS = "огласи"
+    EVENTS = "настани"
+    JOBS = "работа и пракса"
 
 
 class RenderedText(BaseModel):

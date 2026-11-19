@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     FINKI_ANNOUNCEMENTS_API_URL: str = (
         "https://finki.ukim.mk/wp-json/wp/v2/announcement"
     )
+    FINKI_EVENTS_API_URL: str = "https://finki.ukim.mk/wp-json/wp/v2/event"
+    FINKI_JOBS_API_URL: str = "https://finki.ukim.mk/wp-json/wp/v2/jobs-and-internships"
     CHAT_BOT_API_URL: str = "http://api:8880"
 
     POSTHOG_KEY: str = ""

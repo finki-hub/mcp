@@ -10,7 +10,11 @@ from pydantic import Field
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
-from app.schemas.announcement import AnnouncementDetail, AnnouncementSearchResult
+from app.schemas.announcement import (
+    AnnouncementDetail,
+    AnnouncementSearchResult,
+    Board,
+)
 from app.schemas.anto import AntoQuote
 from app.schemas.base import ListPage
 from app.schemas.course import (
@@ -945,8 +949,9 @@ def make_app(settings: Settings) -> MCPServer:
             "по недели), `equivalencies` (еквивалентни предмети низ акредитациите), "
             "`enrollments` (запишани по година), `teaching` (наставници од најновиот "
             "распоред во кој се држи), `schedule` (термини во тековниот распоред) и "
-            "`programs` (магистерски програми во кои е, со вид, семестар и група). "
-            "Опфаќа и магистерски предмети. Вклучи само што ти треба."
+            "`programs` (магистерски програми во кои е, со вид, семестар и група) и "
+            "`unlocks` (предмети за кои е предуслов, т.е. што може да се запише "
+            "потоа). Опфаќа и магистерски предмети. Вклучи само што ти треба."
         ),
         annotations=ToolAnnotations(
             title="Предмет со акредитации, силабус и наставници",
@@ -974,7 +979,7 @@ def make_app(settings: Settings) -> MCPServer:
             Field(
                 description=(
                     "Што да се вклучи: curricula, syllabus, equivalencies, "
-                    "enrollments, teaching, schedule, programs."
+                    "enrollments, teaching, schedule, programs, unlocks."
                 ),
                 examples=[["curricula", "teaching"]],
             ),
@@ -1248,8 +1253,10 @@ def make_app(settings: Settings) -> MCPServer:
             "Ги враќа најновите огласи од огласната табла на ФИНКИ (finki.ukim.mk): "
             "рокови за упис и заверка на семестар, пријавување испити, уписни рокови, "
             "конкурси, стипендии, промени во работно време. Користи ја за прашања за "
-            "тековни рокови и датуми. Секој резултат содржи наслов, датум, линк и "
-            "извадок; за целиот текст користи get_announcement."
+            "тековни рокови и датуми. Со `board` ги пребарува и настаните на ФИНКИ "
+            "(„настани“) и огласите за работа и пракса („работа и пракса“). Секој "
+            "резултат содржи наслов, датум, линк и извадок; за целиот текст користи "
+            "get_announcement со истиот `board`."
         ),
         annotations=ToolAnnotations(
             title="Пребарување огласи од ФИНКИ",
@@ -1291,16 +1298,30 @@ def make_app(settings: Settings) -> MCPServer:
                 examples=[5],
             ),
         ] = 5,
+        board: Annotated[
+            Board,
+            Field(
+                description=(
+                    "Која табла: „огласи“ (огласна табла), „настани“ (предавања, "
+                    "натпревари, работилници и други настани) или „работа и пракса“ "
+                    "(огласи за работа и пракса од компании)."
+                ),
+                examples=["настани"],
+            ),
+        ] = Board.ANNOUNCEMENTS,
     ) -> AnnouncementSearchResult:
         return await anyio.to_thread.run_sync(
-            lambda: search_announcements(query=query, since=since, limit=limit),
+            lambda: search_announcements(
+                query=query, since=since, limit=limit, board=board
+            ),
         )
 
     @mcp.tool(
         name="get_announcement",
         description=(
-            "Го враќа целиот текст на оглас од огласната табла на ФИНКИ по ID "
-            "(добиено од search_announcements), заедно со наслов, датум и линк."
+            "Го враќа целиот текст на оглас, настан или оглас за работа и пракса од "
+            "ФИНКИ по ID (добиено од search_announcements, со истиот `board`), "
+            "заедно со наслов, датум и линк."
         ),
         annotations=ToolAnnotations(
             title="Текст на оглас од ФИНКИ",
@@ -1320,8 +1341,19 @@ def make_app(settings: Settings) -> MCPServer:
                 examples=[21653],
             ),
         ],
+        board: Annotated[
+            Board,
+            Field(
+                description=(
+                    "Која табла: „огласи“ (огласна табла), „настани“ (предавања, "
+                    "натпревари, работилници и други настани) или „работа и пракса“ "
+                    "(огласи за работа и пракса од компании)."
+                ),
+                examples=["настани"],
+            ),
+        ] = Board.ANNOUNCEMENTS,
     ) -> AnnouncementDetail:
-        return await anyio.to_thread.run_sync(get_announcement, id)
+        return await anyio.to_thread.run_sync(get_announcement, id, board)
 
     return mcp
 

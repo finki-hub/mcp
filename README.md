@@ -42,14 +42,14 @@ Server runs on `http://localhost:8808`
 - Filter courses by program, semester or winter/summer term, name or abbreviation, and enrolled-student range in one call; list outputs are compact, paginated (`limit`/`offset`) and flag truncation
 - List FINKI study programs for all three cycles from Directus (`list_study_programs`: names, duration, accreditation, language of instruction where officially confirmed, awarded degree title, total ECTS, master's coordinator; with `details`, the description and curriculum rules, and a master's program's layout: mandatory courses and elective slots per semester, and its elective lists)
 - Ask who teaches what, when and where in the latest main timetable (`schedule`: by staff member, course or abbreviation, room and/or class, optionally one day; from Directus, with courses, rooms and staff already matched)
-- Get a course with what is asked for (`get_course`: by name or abbreviation, plus `curricula` per accreditation, `syllabus` objectives and content, `equivalencies` across accreditations, `enrollments` per year, `teaching` from the latest main timetable the course is taught in, `schedule` in the current one, `programs` for the master's programs a course is in; master's courses included, same-named courses told apart by cycle)
+- Get a course with what is asked for (`get_course`: by name or abbreviation, plus `curricula` per accreditation, `syllabus` objectives and content, `equivalencies` across accreditations, `enrollments` per year, `teaching` from the latest main timetable the course is taught in, `schedule` in the current one, `programs` for the master's programs a course is in, `unlocks` for the courses whose prerequisites name it; master's courses included, same-named courses told apart by cycle)
 - Search theses by student (name or index), committee member and role, year and title (`find_theses`: bachelor's and master's, newest first); `get_diploma`/`get_master` give one thesis in full
 - Ranked statistics in one call (`stats`: `top_courses` by enrollment in an academic year, `theses_per_year` overall or for one mentor, `top_mentors`, `teaching_load` in the current timetable)
 - Get the dean's office (dean and vice deans) or the faculty student assembly (ФСС) of the current or a past term (`get_leadership`)
 - Get a staff member with what is asked for (`get_staff`: profile, plus `teaching`, `schedule`, `theses` counts and recent mentorships, `programs` they coordinate)
 - Fuzzy query matching support
 - Course lookup by abbreviation (Cyrillic or Latin, e.g. `АПС`, `БнП`/`БП`, `paps`); shared abbreviations return all matching courses as suggestions
-- Search FINKI announcements from finki.ukim.mk (`search_announcements`: deadlines for semester enrollment, exam registration, admission rounds, scholarships; Cyrillic or Latin keywords) and read one in full (`get_announcement`)
+- Search FINKI announcements from finki.ukim.mk (`search_announcements`: deadlines for semester enrollment, exam registration, admission rounds, scholarships; Cyrillic or Latin keywords) and read one in full (`get_announcement`); with `board`, the same for FINKI's events and its job and internship posts
 
 ## License
 

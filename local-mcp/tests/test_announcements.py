@@ -9,6 +9,7 @@ import httpx
 import pytest
 
 from app.main import make_app
+from app.schemas.announcement import Board
 from app.tools import announcement as announcement_tools
 from app.tools.announcement import (
     MAX_TEXT_LENGTH,
@@ -432,3 +433,41 @@ def test_fallback_search_used_for_older_posts(monkeypatch: pytest.MonkeyPatch) -
     (call,) = upstream.search_calls
     assert call["search"] == "пријавување испити"
     assert call["after"] == "2025-01-01T00:00:00"
+
+
+_LECTURE = _post(
+    21700,
+    "2026-10-20",
+    "Предавање на тема „Синдром на суво око“ на ФИНКИ",
+    "<p>Предавањето ќе се одржи на 5 ноември 2026 година во амфитеатар А1.</p>\n",
+)
+
+
+def test_events_and_jobs_read_their_own_board(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(announcements_client, "_board_caches", {})
+    settings = Settings()
+    urls: list[str] = []
+
+    def upstream(url: str, params: dict[str, str | int]) -> object:
+        urls.append(url)
+        if url.endswith("/21700"):
+            return _LECTURE
+        return [_LECTURE] if url == settings.FINKI_EVENTS_API_URL else []
+
+    monkeypatch.setattr(announcements_client, "_get_json", upstream)
+
+    events = search_announcements(query="предавање", board=Board.EVENTS)
+    jobs = search_announcements(board=Board.JOBS)
+
+    assert [match.id for match in events.announcements] == [21700]
+    assert jobs.announcements == []
+    assert set(urls) == {settings.FINKI_EVENTS_API_URL, settings.FINKI_JOBS_API_URL}
+    # The announcements board is never read for another board.
+    assert settings.FINKI_ANNOUNCEMENTS_API_URL not in urls
+
+    urls.clear()
+    detail = get_announcement(21700, Board.EVENTS)
+    assert detail.title.startswith("Предавање")
+    assert urls == []  # served from the events snapshot
