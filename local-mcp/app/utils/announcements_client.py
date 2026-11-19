@@ -10,7 +10,7 @@ from urllib.parse import urlsplit
 import httpx
 from pydantic import TypeAdapter
 
-from app.schemas.announcement import AnnouncementPayload
+from app.schemas.announcement import AnnouncementPayload, Board
 from app.utils.html_text import html_to_text
 from app.utils.query_matcher import normalized_words
 from app.utils.settings import Settings
@@ -28,6 +28,15 @@ _FIELDS: Final = "id,date,modified,link,title,content"
 _PAYLOADS: Final = TypeAdapter(list[AnnouncementPayload])
 
 _settings = Settings()
+
+
+def board_url(board: Board) -> str:
+    """The WordPress REST collection of a board."""
+    return {
+        Board.ANNOUNCEMENTS: _settings.FINKI_ANNOUNCEMENTS_API_URL,
+        Board.EVENTS: _settings.FINKI_EVENTS_API_URL,
+        Board.JOBS: _settings.FINKI_JOBS_API_URL,
+    }[board]
 
 
 class AnnouncementsUnavailableError(RuntimeError):
@@ -102,11 +111,11 @@ def _get_records(url: str, params: dict[str, str | int]) -> list[AnnouncementRec
     ]
 
 
-def _load_snapshot() -> tuple[AnnouncementRecord, ...]:
+def _load_snapshot(url: str) -> tuple[AnnouncementRecord, ...]:
     records: list[AnnouncementRecord] = []
     for page in range(_SNAPSHOT_PAGES):
         page_records = _get_records(
-            _settings.FINKI_ANNOUNCEMENTS_API_URL,
+            url,
             {"per_page": _PAGE_SIZE, "offset": page * _PAGE_SIZE, "_fields": _FIELDS},
         )
         records.extend(page_records)
@@ -122,7 +131,9 @@ class AnnouncementSnapshotCache:
         retry_delay: float = _RETRY_DELAY,
         *,
         background: bool = True,
+        url: str | None = None,
     ) -> None:
+        self._url = url or _settings.FINKI_ANNOUNCEMENTS_API_URL
         self._ttl = ttl
         self._retry_delay = retry_delay
         self._background = background
@@ -162,7 +173,7 @@ class AnnouncementSnapshotCache:
 
     def _refresh(self) -> None:
         try:
-            records = _load_snapshot()
+            records = _load_snapshot(self._url)
         except (httpx.HTTPError, ValueError) as error:
             logger.warning("Failed to refresh announcements: %s", error)
             with self._lock:
@@ -193,26 +204,37 @@ class AnnouncementSnapshotCache:
 
 
 _snapshot_cache = AnnouncementSnapshotCache()
+# The events and job posts, each cached like the announcements.
+_board_caches: dict[Board, AnnouncementSnapshotCache] = {}
+_board_caches_lock = threading.Lock()
 
 
-def get_announcement_snapshot() -> AnnouncementSnapshot:
+def get_announcement_snapshot(
+    board: Board = Board.ANNOUNCEMENTS,
+) -> AnnouncementSnapshot:
     """
-    Return the newest announcements, refreshed every 15 minutes. A failed
+    Return the newest posts of a board, refreshed every 15 minutes. A failed
     refresh serves the previous snapshot marked as stale.
     """
-    return _snapshot_cache.get()
+    if board is Board.ANNOUNCEMENTS:
+        return _snapshot_cache.get()
+    with _board_caches_lock:
+        cache = _board_caches.setdefault(
+            board, AnnouncementSnapshotCache(url=board_url(board))
+        )
+    return cache.get()
 
 
 def search_remote_announcements(
-    query: str, after: date, limit: int
+    query: str, after: date, limit: int, board: Board = Board.ANNOUNCEMENTS
 ) -> list[AnnouncementRecord]:
     """
-    Search older announcements with the WordPress full-text search, which is
-    only reliable for Cyrillic queries.
+    Search older posts of a board with the WordPress full-text search, which
+    is only reliable for Cyrillic queries.
     """
     try:
         return _get_records(
-            _settings.FINKI_ANNOUNCEMENTS_API_URL,
+            board_url(board),
             {
                 "search": query,
                 "after": f"{after.isoformat()}T00:00:00",
@@ -224,8 +246,10 @@ def search_remote_announcements(
         raise AnnouncementsUnavailableError from error
 
 
-def fetch_announcement(id: int) -> AnnouncementRecord | None:
-    url = f"{_settings.FINKI_ANNOUNCEMENTS_API_URL.rstrip('/')}/{id}"
+def fetch_announcement(
+    id: int, board: Board = Board.ANNOUNCEMENTS
+) -> AnnouncementRecord | None:
+    url = f"{board_url(board).rstrip('/')}/{id}"
     try:
         payload = _get_json(url, {"_fields": _FIELDS})
         return _to_record(AnnouncementPayload.model_validate(payload))

@@ -9,6 +9,7 @@ from app.schemas.announcement import (
     AnnouncementDetail,
     AnnouncementMatch,
     AnnouncementSearchResult,
+    Board,
 )
 from app.utils.announcements_client import (
     AnnouncementRecord,
@@ -275,8 +276,9 @@ def search_announcements(
     query: str | None = None,
     since: date | None = None,
     limit: int = 5,
+    board: Board = Board.ANNOUNCEMENTS,
 ) -> AnnouncementSearchResult:
-    snapshot = get_announcement_snapshot()
+    snapshot = get_announcement_snapshot(board)
     today = _today()
     since = since or today - DEFAULT_LOOKBACK
     records = [record for record in snapshot.records if record.published >= since]
@@ -302,6 +304,7 @@ def search_announcements(
                 transliterate_and_normalize(query),
                 since,
                 _REMOTE_SEARCH_SIZE,
+                board,
             )
         except AnnouncementsUnavailableError:
             logger.warning("Fallback announcement search failed", exc_info=True)
@@ -336,16 +339,16 @@ def _cap_text(text: str) -> tuple[str, bool]:
     return f"{text[:cut].rstrip()}\n…", True
 
 
-def get_announcement(id: int) -> AnnouncementDetail:
+def get_announcement(id: int, board: Board = Board.ANNOUNCEMENTS) -> AnnouncementDetail:
     record = None
     try:
-        snapshot = get_announcement_snapshot()
+        snapshot = get_announcement_snapshot(board)
     except AnnouncementsUnavailableError:
         logger.warning("Announcement snapshot unavailable, fetching %s directly", id)
     else:
         record = next((item for item in snapshot.records if item.id == id), None)
     if record is None:
-        record = fetch_announcement(id)
+        record = fetch_announcement(id, board)
     if record is None:
         raise AnnouncementNotFoundError(id)
 
