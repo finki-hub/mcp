@@ -23,6 +23,7 @@ from app.schemas.course import (
 )
 from app.schemas.course_details import CourseDetails, CourseInclude
 from app.schemas.defense import DiplomaResult, MasterResult
+from app.schemas.leadership import Leadership, LeadershipBody
 from app.schemas.room import RoomData, RoomLocation, RoomMatch, RoomType
 from app.schemas.schedule import Schedule
 from app.schemas.session import ExamSessionScheduleFile
@@ -50,6 +51,7 @@ from app.tools.course import (
 )
 from app.tools.course_details import get_course
 from app.tools.diploma import get_diploma
+from app.tools.leadership import get_leadership
 from app.tools.master import get_master
 from app.tools.room import DEFAULT_ROOM_LIMIT, get_room_data, list_rooms
 from app.tools.schedule import schedule
@@ -890,6 +892,49 @@ def make_app(settings: Settings) -> MCPServer:
     ) -> Annotated[CallToolResult, StaffDetails]:
         details = await anyio.to_thread.run_sync(lambda: get_staff(name, include))
         return compact_result(details)
+
+    @mcp.tool(
+        name="get_leadership",
+        description=(
+            "Враќа ја деканската управа на ФИНКИ (декан и продекани, со титула и "
+            "звање) или Факултетското студентско собрание (ФСС: претседател и "
+            "членови) од FINKI Hub (Directus): тековниот состав, или составот во "
+            "дадена година. Враќа и кои години (мандати) се познати."
+        ),
+        annotations=ToolAnnotations(
+            title="Деканска управа и студентско собрание",
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
+            readOnlyHint=True,
+        ),
+    )
+    @track_tool("get_leadership")
+    async def get_leadership_tool(
+        body: Annotated[
+            LeadershipBody,
+            Field(
+                description=(
+                    "„деканска управа“ (декан и продекани) или „студентско "
+                    "собрание“ (ФСС)."
+                ),
+                examples=["деканска управа"],
+            ),
+        ] = LeadershipBody.DEANS_OFFICE,
+        year: Annotated[
+            int | None,
+            Field(
+                description=(
+                    "Година; составот што бил на функција тогаш. Без година: тековниот."
+                ),
+                examples=[2021],
+                ge=2000,
+                le=2100,
+            ),
+        ] = None,
+    ) -> Annotated[CallToolResult, Leadership]:
+        result = await anyio.to_thread.run_sync(lambda: get_leadership(body, year))
+        return compact_result(result)
 
     @mcp.tool(
         name="get_course",
