@@ -8,6 +8,12 @@ from app.tools.leadership import get_leadership
 # `get_directus_items` returns them (sorted by -year, id).
 _DEANS_OFFICE = [
     {
+        "id": 7,
+        "year": 2025,
+        "position": "Секретар",
+        "staff": {"name": "Игор Цветановски", "title": "м-р", "position": "Секретар"},
+    },
+    {
         "id": 5,
         "year": 2025,
         "position": "Продекан за настава",
@@ -73,7 +79,7 @@ def _data(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def test_the_current_deans_office_lists_the_dean_first() -> None:
+def test_the_current_deans_office_lists_the_dean_first_and_the_secretary_last() -> None:
     result = get_leadership()
 
     assert result.body is LeadershipBody.DEANS_OFFICE
@@ -81,6 +87,7 @@ def test_the_current_deans_office_lists_the_dean_first() -> None:
     assert [(m.position, m.name) for m in (result.members or [])] == [
         ("Декан", "Петре Ламески"),
         ("Продекан за настава", "Дејан Спасов"),
+        ("Секретар", "Игор Цветановски"),
     ]
     assert (result.members or [])[0].title == "д-р"
     assert (result.members or [])[0].staff_position == "Вонреден професор"
