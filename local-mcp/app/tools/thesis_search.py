@@ -103,6 +103,75 @@ def _student_matcher(
     return lambda thesis: thesis.get("student_name") in accepted
 
 
+def _cleaned(value: str | None) -> str | None:
+    return value.strip() if value and value.strip() else None
+
+
+def _checked_kind(
+    kind: ThesisKind | None,
+    role: ThesisRole | None,
+    *,
+    has_filter: bool,
+    has_staff: bool,
+) -> tuple[ThesisKind | None, str | None]:
+    """The kind to search, or the error the filters make."""
+    if not has_filter:
+        return None, "Внесете вработен, студент, година, вид или дел од насловот."
+    if role is not None and not has_staff:
+        return None, "Улогата се задава заедно со вработен."
+    if role == ThesisRole.PRESIDENT:
+        # Only a master's committee has a president.
+        if kind == ThesisKind.BACHELOR:
+            return None, "Дипломските работи немаат претседател на комисија."
+        return ThesisKind.MASTER, None
+    return kind, None
+
+
+class _Filters:
+    """The filters a thesis must pass, besides its kind."""
+
+    def __init__(
+        self,
+        *,
+        role: ThesisRole | None,
+        year: int | None,
+        needle: str | None,
+        matches_student: Callable[[dict], bool],
+    ) -> None:
+        self.role = role
+        self.year = year
+        self.needle = needle
+        self.matches_student = matches_student
+
+    def keeps(self, thesis: dict, roles: dict | None, held: ThesisRole | None) -> bool:
+        if roles is not None and (held is None or (self.role and held != self.role)):
+            return False
+        if self.year is not None and thesis.get("year") != self.year:
+            return False
+        if self.needle and self.needle not in transliterate_and_normalize(
+            thesis["title"]
+        ):
+            return False
+        return self.matches_student(thesis)
+
+
+def _matches(
+    theses: dict[ThesisKind, list[dict]],
+    staff_id: int | None,
+    filters: _Filters,
+) -> list[tuple[tuple[int, str], ThesisMatch]]:
+    matches: list[tuple[tuple[int, str], ThesisMatch]] = []
+    for each, rows in theses.items():
+        roles = _staff_roles(each, staff_id) if staff_id is not None else None
+        _collection, _staff, date = _KINDS[each]
+        for thesis in rows:
+            held = roles.get(thesis["id"]) if roles is not None else None
+            if filters.keeps(thesis, roles, held):
+                key = (thesis.get("year") or 0, thesis.get(date) or "")
+                matches.append((key, _match(each, thesis, held)))
+    return matches
+
+
 def find_theses(
     *,
     kind: ThesisKind | None = None,
@@ -113,22 +182,15 @@ def find_theses(
     query: str | None = None,
     limit: int = DEFAULT_THESIS_LIMIT,
 ) -> ThesisSearch:
-    staff = staff.strip() if staff and staff.strip() else None
-    query = query.strip() if query and query.strip() else None
-    student = student.strip() if student and student.strip() else None
-    if all(value is None for value in (staff, student, query, year, kind)):
-        return ThesisSearch(
-            error="Внесете вработен, студент, година, вид или дел од насловот.",
-        )
-    if role is not None and staff is None:
-        return ThesisSearch(error="Улогата се задава заедно со вработен.")
-    if role == ThesisRole.PRESIDENT:
-        # Only a master's committee has a president.
-        if kind == ThesisKind.BACHELOR:
-            return ThesisSearch(
-                error="Дипломските работи немаат претседател на комисија.",
-            )
-        kind = ThesisKind.MASTER
+    staff, query, student = _cleaned(staff), _cleaned(query), _cleaned(student)
+    kind, error = _checked_kind(
+        kind,
+        role,
+        has_filter=any(v is not None for v in (staff, student, query, year, kind)),
+        has_staff=staff is not None,
+    )
+    if error is not None:
+        return ThesisSearch(error=error)
 
     staff_id: int | None = None
     staff_name: str | None = None
@@ -138,28 +200,17 @@ def find_theses(
             return ThesisSearch(error=found.error, suggestions=found.suggestions)
         staff_id, staff_name = found.record["id"], found.record["name"]
 
-    needle = transliterate_and_normalize(query) if query else None
     theses = {each: _theses(each) for each in ([kind] if kind else list(ThesisKind))}
-    matches_student = _student_matcher(
-        student,
-        [thesis for rows in theses.values() for thesis in rows],
+    filters = _Filters(
+        role=role,
+        year=year,
+        needle=transliterate_and_normalize(query) if query else None,
+        matches_student=_student_matcher(
+            student,
+            [thesis for rows in theses.values() for thesis in rows],
+        ),
     )
-    matches: list[tuple[tuple[int, str], ThesisMatch]] = []
-    for each, rows in theses.items():
-        roles = _staff_roles(each, staff_id) if staff_id is not None else None
-        _collection, _staff, date = _KINDS[each]
-        for thesis in rows:
-            held = roles.get(thesis["id"]) if roles is not None else None
-            if roles is not None and (held is None or (role and held != role)):
-                continue
-            if year is not None and thesis.get("year") != year:
-                continue
-            if needle and needle not in transliterate_and_normalize(thesis["title"]):
-                continue
-            if not matches_student(thesis):
-                continue
-            key = (thesis.get("year") or 0, thesis.get(date) or "")
-            matches.append((key, _match(each, thesis, held)))
+    matches = _matches(theses, staff_id, filters)
 
     # Newest first: by year, then by date within it.
     matches.sort(key=lambda pair: pair[0], reverse=True)

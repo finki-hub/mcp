@@ -156,6 +156,25 @@ def _failed(found: Found) -> Schedule:
     return Schedule(error=found.error, suggestions=found.suggestions)
 
 
+def _slot_wanted(
+    slot: dict,
+    wanted: dict[str, int],
+    group: str | None,
+    day: TimetableDay | None,
+) -> bool:
+    """Whether a slot has every matched staff member, course and room."""
+    checks = (
+        "staff" not in wanted or wanted["staff"] in staff_ids(slot),
+        "course" not in wanted or wanted["course"] in course_ids(slot),
+        "room" not in wanted or _related_id(slot, "room") == wanted["room"],
+    )
+    return (
+        all(checks)
+        and (group is None or _in_group(slot, group))
+        and (day is None or _DAYS.get(slot.get("day") or 0) == day)
+    )
+
+
 def schedule(
     *,
     staff: str | None = None,
@@ -195,11 +214,7 @@ def schedule(
     slots = [
         slot
         for slot in timetable_slots(timetable["id"])
-        if ("staff" not in wanted or wanted["staff"] in staff_ids(slot))
-        and ("course" not in wanted or wanted["course"] in course_ids(slot))
-        and ("room" not in wanted or _related_id(slot, "room") == wanted["room"])
-        and (group is None or _in_group(slot, group))
-        and (day is None or _DAYS.get(slot.get("day") or 0) == day)
+        if _slot_wanted(slot, wanted, group, day)
     ]
     return Schedule(
         timetable=timetable["title"],

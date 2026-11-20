@@ -47,6 +47,26 @@ def named_courses(text: str, names: Iterable[str]) -> set[str]:
     return found
 
 
+def _linked_names(entry: dict) -> list[str]:
+    """The names of the courses an accreditation subject is linked to."""
+    return [
+        link["course"]["name"]
+        for link in entry.get("course_links") or []
+        if isinstance(link.get("course"), dict) and link["course"].get("name")
+    ]
+
+
+def _requires_one_of(entry: dict, known: list[str], targets: set[str]) -> bool:
+    """Whether a published subject, other than the targets, requires one."""
+    generation = entry.get("generation") or {}
+    text = entry.get("prerequisites")
+    if not text or not generation.get("published"):
+        return False
+    if _key(entry.get("name") or "") in targets:
+        return False
+    return bool(named_courses(text, known) & targets)
+
+
 def courses_unlocked_by(course_names: Iterable[str]) -> list[CourseUnlock]:
     """
     The subjects of the published accreditations whose prerequisites name
@@ -65,32 +85,18 @@ def courses_unlocked_by(course_names: Iterable[str]) -> list[CourseUnlock]:
         },
     )
     known = [entry.get("name") or "" for entry in entries]
-    known += [
-        link["course"]["name"]
-        for entry in entries
-        for link in entry.get("course_links") or []
-        if isinstance(link.get("course"), dict) and link["course"].get("name")
-    ]
+    known += [name for entry in entries for name in _linked_names(entry)]
     unlocks: dict[tuple[str, str], CourseUnlock] = {}
     for entry in entries:
-        generation = entry.get("generation") or {}
-        text = entry.get("prerequisites")
-        if not text or not generation.get("published"):
+        if not _requires_one_of(entry, known, targets):
             continue
-        if _key(entry.get("name") or "") in targets:
-            continue
-        if not named_courses(text, known) & targets:
-            continue
-        linked = [
-            link["course"]["name"]
-            for link in entry.get("course_links") or []
-            if isinstance(link.get("course"), dict) and link["course"].get("name")
-        ]
+        code = entry["generation"]["code"]
+        linked = _linked_names(entry)
         name = linked[0] if linked else entry["name"]
         unlocks.setdefault(
-            (generation["code"], name),
+            (code, name),
             CourseUnlock(
-                course=name, accreditation=generation["code"], prerequisites=text
+                course=name, accreditation=code, prerequisites=entry["prerequisites"]
             ),
         )
     return sorted(

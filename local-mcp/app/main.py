@@ -775,7 +775,7 @@ def make_app(settings: Settings) -> MCPServer:
     ) -> Annotated[CallToolResult, ListPage[RoomMatch]]:
         return compact_result(
             list_rooms(
-                type=type,
+                room_type=type,
                 location=location,
                 floor=floor,
                 min_capacity=min_capacity,

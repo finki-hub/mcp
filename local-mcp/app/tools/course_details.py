@@ -184,6 +184,54 @@ def _teaching(course_id: int) -> tuple[str | None, list[CourseTeacher]]:
     )
 
 
+def _unlocks(record: dict) -> list:
+    # The course's own name and the names of its accreditation subjects.
+    names = [record["name"]] + [
+        link["entry"]["name"]
+        for link in record.get("curricula") or []
+        if isinstance(link.get("entry"), dict) and link["entry"].get("name")
+    ]
+    return courses_unlocked_by(names)
+
+
+def _add_record_parts(
+    details: CourseDetails, record: dict, wanted: set[CourseInclude]
+) -> None:
+    """The included parts read from the course record itself."""
+    if CourseInclude.CURRICULA in wanted:
+        details.curricula = _curricula(record) or None
+    if CourseInclude.SYLLABUS in wanted:
+        details.syllabus = _syllabus(record)
+    if CourseInclude.EQUIVALENCIES in wanted:
+        details.equivalencies = _equivalencies(record)
+    if CourseInclude.ENROLLMENTS in wanted:
+        details.enrollments = _enrollments(record)
+    if CourseInclude.PROGRAMS in wanted:
+        details.programs = _programs(record)
+    if CourseInclude.UNLOCKS in wanted:
+        details.unlocks = _unlocks(record) or None
+
+
+def _add_timetable_parts(
+    details: CourseDetails, course_id: int, wanted: set[CourseInclude]
+) -> None:
+    """The included parts read from the timetables."""
+    if CourseInclude.TEACHING in wanted:
+        details.teaching_timetable, teachers = _teaching(course_id)
+        details.teaching = teachers or None
+    if CourseInclude.SCHEDULE in wanted:
+        timetable = current_timetable()
+        if timetable is not None:
+            details.timetable = timetable["title"]
+            details.schedule = sorted_entries(
+                [
+                    slot
+                    for slot in timetable_slots(timetable["id"])
+                    if course_id in course_ids(slot)
+                ],
+            )
+
+
 def get_course(
     name: str,
     include: list[CourseInclude] | None = None,
@@ -214,35 +262,6 @@ def get_course(
         tags=record.get("tags") or None,
         cycle=record.get("degree_cycle") or None,
     )
-    if CourseInclude.CURRICULA in wanted:
-        details.curricula = _curricula(record) or None
-    if CourseInclude.SYLLABUS in wanted:
-        details.syllabus = _syllabus(record)
-    if CourseInclude.EQUIVALENCIES in wanted:
-        details.equivalencies = _equivalencies(record)
-    if CourseInclude.ENROLLMENTS in wanted:
-        details.enrollments = _enrollments(record)
-    if CourseInclude.PROGRAMS in wanted:
-        details.programs = _programs(record)
-    if CourseInclude.UNLOCKS in wanted:
-        names = [record["name"]] + [
-            link["entry"]["name"]
-            for link in record.get("curricula") or []
-            if isinstance(link.get("entry"), dict) and link["entry"].get("name")
-        ]
-        details.unlocks = courses_unlocked_by(names) or None
-    if CourseInclude.TEACHING in wanted:
-        details.teaching_timetable, teachers = _teaching(record["id"])
-        details.teaching = teachers or None
-    if CourseInclude.SCHEDULE in wanted:
-        timetable = current_timetable()
-        if timetable is not None:
-            details.timetable = timetable["title"]
-            details.schedule = sorted_entries(
-                [
-                    slot
-                    for slot in timetable_slots(timetable["id"])
-                    if record["id"] in course_ids(slot)
-                ],
-            )
+    _add_record_parts(details, record, wanted)
+    _add_timetable_parts(details, record["id"], wanted)
     return details

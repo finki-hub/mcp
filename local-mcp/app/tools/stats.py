@@ -13,6 +13,11 @@ from app.utils.http_client import get_directus_items
 DEFAULT_STATS_LIMIT = 10
 
 # The options each metric applies.
+# Directus aggregate query parameters.
+_SUM = "aggregate[sum]"
+_COUNT = "aggregate[count]"
+_GROUP_BY = "groupBy[]"
+
 _OPTIONS: dict[StatsMetric, set[str]] = {
     StatsMetric.TOP_COURSES: {"academic_year"},
     StatsMetric.THESES_PER_YEAR: {"kind", "staff"},
@@ -49,7 +54,7 @@ def _enrolled_years() -> list[str]:
     # has none until its Moodle snapshot is imported.
     rows = get_directus_items(
         "course_enrollments",
-        {"aggregate[sum]": "count", "groupBy[]": "academic_year", "limit": -1},
+        {_SUM: "count", _GROUP_BY: "academic_year", "limit": -1},
     )
     labels = {
         row["id"]: row["label"]
@@ -83,8 +88,8 @@ def _top_courses(academic_year: str | None, limit: int) -> Stats:
     rows = get_directus_items(
         "course_enrollments",
         {
-            "aggregate[sum]": "count",
-            "groupBy[]": "course",
+            _SUM: "count",
+            _GROUP_BY: "course",
             "filter[academic_year][label][_eq]": year,
             "limit": -1,
         },
@@ -113,14 +118,14 @@ def _theses_per_year(kind: ThesisKind | None, staff_id: int | None) -> Stats:
         if staff_id is None:
             rows = get_directus_items(
                 theses,
-                {"aggregate[count]": "id", "groupBy[]": "year", "limit": -1},
+                {_COUNT: "id", _GROUP_BY: "year", "limit": -1},
             )
         else:
             rows = get_directus_items(
                 staff_table,
                 {
-                    "aggregate[count]": "id",
-                    "groupBy[]": "year",
+                    _COUNT: "id",
+                    _GROUP_BY: "year",
                     "filter[staff][_eq]": staff_id,
                     "filter[role][_eq]": "mentor",
                     "limit": -1,
@@ -147,8 +152,8 @@ def _top_mentors(kind: ThesisKind | None, year: int | None, limit: int) -> Stats
     for each in [kind] if kind else list(ThesisKind):
         _theses, staff_table = _THESIS_TABLES[each]
         params: dict[str, str | int] = {
-            "aggregate[count]": "id",
-            "groupBy[]": "staff",
+            _COUNT: "id",
+            _GROUP_BY: "staff",
             "filter[role][_eq]": "mentor",
             "limit": -1,
         }
@@ -183,9 +188,9 @@ def _teaching_load(limit: int) -> Stats:
     rows = get_directus_items(
         "course_teaching",
         {
-            "aggregate[sum]": "periods",
+            _SUM: "periods",
             "aggregate[countDistinct]": "course",
-            "groupBy[]": "staff",
+            _GROUP_BY: "staff",
             "filter[timetable][_eq]": timetable["id"],
             "limit": -1,
         },
