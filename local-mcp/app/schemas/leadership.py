@@ -8,38 +8,67 @@ from app.schemas.base import PrunedModel
 class LeadershipBody(StrEnum):
     DEANS_OFFICE = "деканска управа"
     STUDENT_COUNCIL = "студентско собрание"
+    MANAGEMENT_BOARD = "деканатска управа"
+    COUNCIL = "ннс"
+    INSTITUTES = "институти"
+    CENTERS = "центри"
 
 
 class LeadershipMember(PrunedModel):
-    position: str = Field(
-        ...,
+    position: str | None = Field(
+        None,
         description=(
-            "Функцијата: во деканската управа „Декан“ или продекан; во студентското "
-            "собрание (ФСС) „Претседател“ или групата што членот ја претставува."
+            "Функцијата: во деканската управа „Декан“ или продекан; во деканатската "
+            "управа и раководителите на институти; во студентското собрание (ФСС) "
+            "„Претседател“ или групата што членот ја претставува. Членовите на ННС "
+            "немаат функција."
         ),
         examples=["Продекан за настава", "Претседател", "СИИС"],
     )
     name: str = Field(..., description="Име и презиме", examples=["Дејан Спасов"])
     title: str | None = Field(
-        None, description="Титула (само за деканската управа)", examples=["д-р"]
+        None, description="Титула (не за студентското собрание)", examples=["д-р"]
     )
     staff_position: str | None = Field(
         None,
-        description="Звање на вработениот (само за деканската управа)",
+        description="Звање на вработениот (не за студентското собрание)",
         examples=["Редовен професор"],
+    )
+
+
+class FacultyUnit(PrunedModel):
+    name: str = Field(
+        ...,
+        description="Име на институтот или центарот",
+        examples=["Институт за софтверско инженерство"],
+    )
+    page: str | None = Field(None, description="Страница на finki.ukim.mk")
+    head: LeadershipMember | None = Field(None, description="Раководител")
+    members: list[str] | None = Field(
+        None,
+        description="Членови на институтот (само за институти)",
+        examples=[["Иван Чорбев", "Бобан Јоксимоски"]],
     )
 
 
 class Leadership(PrunedModel):
     body: LeadershipBody = Field(..., description="Телото")
-    year: int = Field(
-        ...,
-        description="Година кога започнал составот (мандатот)",
+    year: int | None = Field(
+        None,
+        description=(
+            "Година кога започнал составот (мандатот); само за деканската управа "
+            "и студентското собрание, другите се тековниот состав"
+        ),
         examples=[2025],
     )
-    members: list[LeadershipMember] = Field(..., description="Членовите по функција")
-    years: list[int] = Field(
-        ...,
+    members: list[LeadershipMember] | None = Field(
+        None, description="Членовите по функција (не за институти и центри)"
+    )
+    units: list[FacultyUnit] | None = Field(
+        None, description="Институтите или центрите (само за нив)"
+    )
+    years: list[int] | None = Field(
+        None,
         description="Сите години за кои постои состав, најновите прво",
         examples=[[2025, 2021, 2018]],
     )

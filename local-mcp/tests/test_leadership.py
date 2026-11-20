@@ -78,12 +78,12 @@ def test_the_current_deans_office_lists_the_dean_first() -> None:
 
     assert result.body is LeadershipBody.DEANS_OFFICE
     assert result.year == 2025
-    assert [(m.position, m.name) for m in result.members] == [
+    assert [(m.position, m.name) for m in (result.members or [])] == [
         ("Декан", "Петре Ламески"),
         ("Продекан за настава", "Дејан Спасов"),
     ]
-    assert result.members[0].title == "д-р"
-    assert result.members[0].staff_position == "Вонреден професор"
+    assert (result.members or [])[0].title == "д-р"
+    assert (result.members or [])[0].staff_position == "Вонреден професор"
     assert result.years == [2025, 2015, 2011]
 
 
@@ -98,18 +98,20 @@ def test_a_year_picks_the_term_in_office_then() -> None:
 def test_a_position_without_a_person_is_left_out() -> None:
     result = get_leadership(year=2015)
 
-    assert [m.name for m in result.members] == ["Андреа Кулаков"]
+    assert [m.name for m in (result.members or [])] == ["Андреа Кулаков"]
 
 
 def test_the_student_council_lists_its_president_first_without_staff_fields() -> None:
     result = get_leadership(LeadershipBody.STUDENT_COUNCIL)
 
     assert result.year == 2026
-    assert [(m.position, m.name) for m in result.members] == [
+    assert [(m.position, m.name) for m in (result.members or [])] == [
         ("Претседател", "Георгина Илиевска"),
         ("СИИС", "Ана Новеска"),
     ]
-    assert all(m.title is None and m.staff_position is None for m in result.members)
+    assert all(
+        m.title is None and m.staff_position is None for m in (result.members or [])
+    )
     assert result.years == [2026, 2024]
 
 

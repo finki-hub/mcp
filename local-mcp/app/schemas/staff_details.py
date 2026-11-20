@@ -12,6 +12,7 @@ class StaffInclude(StrEnum):
     SCHEDULE = "schedule"
     THESES = "theses"
     PROGRAMS = "programs"
+    BIO = "bio"
 
 
 class TaughtCourse(PrunedModel):
@@ -71,6 +72,23 @@ class CoordinatedProgram(PrunedModel):
 class StaffDetails(PrunedModel):
     name: str = Field(..., description="Име и презиме", examples=["Весна Димитрова"])
     staff: StaffProfile | None = Field(None, description="Податоци за вработениот")
+    institute: str | None = Field(
+        None,
+        description="Институтот на кој припаѓа",
+        examples=["Институт за софтверско инженерство"],
+    )
+    roles: list[str] | None = Field(
+        None,
+        description=(
+            "Функции на факултетот: во деканатската управа, раководител на институт "
+            "или центар, член на ННС"
+        ),
+        examples=[["Продекан за настава", "Член на Наставно-научниот совет (ННС)"]],
+    )
+    bio: str | None = Field(
+        None,
+        description="Биографија од профилот на ФИНКИ (со `bio`)",
+    )
     timetable: str | None = Field(
         None,
         description="Распоредот од кој се `teaching` и `schedule`",

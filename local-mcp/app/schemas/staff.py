@@ -88,3 +88,7 @@ class StaffProfile(BaseModel):
         description="Линк до профилот на веб-страницата на ФИНКИ",
         examples=["https://www.finki.ukim.mk/mk/staff/aleksandar-tenev"],
     )
+    photo: str | None = Field(
+        None,
+        description="Линк до фотографијата од профилот на ФИНКИ",
+    )
