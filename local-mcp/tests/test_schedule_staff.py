@@ -7,7 +7,7 @@ from mcp.types import CallToolResult
 from app.main import app
 from app.schemas.staff_details import StaffInclude
 from app.schemas.timetable import TimetableDay
-from app.tools import directus_lookup, schedule, staff_details
+from app.tools import directus_lookup, faculty, schedule, staff_details
 from app.tools.schedule import schedule as schedule_of
 from app.tools.staff_details import get_staff
 
@@ -134,6 +134,8 @@ def _items(collection: str, params: dict[str, str | int]) -> list[dict]:
         return [{"role": "president", "year": 2026, "thesis": {"title": "М"}}]
     if collection == "degree_programs":
         return [{"code": "BKK23_2", "name": "Безбедност, криптографија и кодирање"}]
+    if collection in {"institutes", "faculty_centers", "faculty_body_members"}:
+        return []
     return {
         "courses": _COURSES,
         "rooms": _ROOMS,
@@ -144,7 +146,7 @@ def _items(collection: str, params: dict[str, str | int]) -> list[dict]:
 
 @pytest.fixture(autouse=True)
 def _data(monkeypatch: pytest.MonkeyPatch) -> None:
-    for module in (directus_lookup, schedule, staff_details):
+    for module in (directus_lookup, faculty, schedule, staff_details):
         monkeypatch.setattr(module, "get_directus_items", _items)
 
 

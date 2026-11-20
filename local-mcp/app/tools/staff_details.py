@@ -11,6 +11,7 @@ from app.schemas.staff_details import (
     ThesisRoleCounts,
 )
 from app.tools.directus_lookup import find_staff
+from app.tools.faculty import staff_institute, staff_roles
 from app.tools.schedule import (
     current_timetable,
     sorted_entries,
@@ -24,7 +25,8 @@ from app.utils.http_client import get_directus_items
 # they coordinate.
 
 _PROFILE_FIELDS = (
-    "id,name,title,position,active,email,cabinet,consultations,courses,profile"
+    "id,name,title,position,active,email,cabinet,consultations,courses,profile,"
+    "photo,bio"
 )
 _RECENT_MENTORED = 5
 
@@ -39,6 +41,7 @@ def _profile(record: dict) -> StaffProfile:
         consultations=record.get("consultations") or None,
         courses=record.get("courses") or None,
         profile=record.get("profile") or None,
+        photo=record.get("photo") or None,
     )
 
 
@@ -148,8 +151,14 @@ def get_staff(
         # The cached list named someone Directus no longer has.
         return StaffDetails(name=name, error=f"„{name}“ не е пронајден (вработени)")
     record = records[0]
-    details = StaffDetails(name=record["name"], staff=_profile(record))
     wanted = set(include or ())
+    details = StaffDetails(
+        name=record["name"],
+        staff=_profile(record),
+        institute=staff_institute(staff_id),
+        roles=staff_roles(staff_id) or None,
+        bio=(record.get("bio") or None) if StaffInclude.BIO in wanted else None,
+    )
 
     if wanted & {StaffInclude.TEACHING, StaffInclude.SCHEDULE}:
         timetable = current_timetable()
