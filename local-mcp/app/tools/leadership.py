@@ -19,8 +19,16 @@ _QUERIES: dict[LeadershipBody, tuple[str, str]] = {
     ),
 }
 
-# The dean first, then the vice deans; the council's president first.
+# The dean first, then the vice deans and the secretary last; the
+# council's president first.
 _LEADS = ("Декан", "Претседател")
+_LAST = ("Секретар",)
+
+
+def _rank(member: LeadershipMember) -> int:
+    if member.position in _LEADS:
+        return 0
+    return 2 if member.position in _LAST else 1
 
 
 def _member(body: LeadershipBody, row: dict) -> LeadershipMember | None:
@@ -115,5 +123,5 @@ def get_leadership(
         for row in rows
         if row.get("year") == chosen and (member := _member(body, row)) is not None
     ]
-    members.sort(key=lambda member: member.position not in _LEADS)
+    members.sort(key=_rank)
     return Leadership(body=body, year=chosen, members=members, years=years)
