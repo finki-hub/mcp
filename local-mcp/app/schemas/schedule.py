@@ -3,6 +3,8 @@ from pydantic import Field
 from app.schemas.base import PrunedModel
 from app.schemas.timetable import TimetableDay
 
+_STAFF_NAME_EXAMPLE = "Весна Димитрова"
+
 
 class ScheduleEntry(PrunedModel):
     course: str = Field(
@@ -29,7 +31,7 @@ class ScheduleEntry(PrunedModel):
     staff: list[str] | None = Field(
         None,
         description="Наставници; имињата од распоредот кога не се поврзани",
-        examples=[["Весна Димитрова"]],
+        examples=[[_STAFF_NAME_EXAMPLE]],
     )
     groups: str | None = Field(
         None,
@@ -47,7 +49,7 @@ class Schedule(PrunedModel):
     matched: dict[str, str] | None = Field(
         None,
         description="Што се пронајде за секој филтер (вработен, предмет, просторија)",
-        examples=[{"staff": "Весна Димитрова"}],
+        examples=[{"staff": _STAFF_NAME_EXAMPLE}],
     )
     entries: list[ScheduleEntry] | None = Field(
         None,
@@ -61,5 +63,5 @@ class Schedule(PrunedModel):
     suggestions: list[str] | None = Field(
         None,
         description="Предлози кога филтерот е нееднозначен или не е пронајден",
-        examples=[["Весна Димитрова", "Весна Димитриевска Ристовска"]],
+        examples=[[_STAFF_NAME_EXAMPLE, "Весна Димитриевска Ристовска"]],
     )

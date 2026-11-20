@@ -222,6 +222,49 @@ def _not_found(name: str) -> str:
     return f"Просторијата „{name}“ не е пронајдена"
 
 
+def _typed_retry(
+    query: str,
+    names: list[str],
+    rooms: list[dict],
+    resolution: _RoomResolution,
+) -> tuple[_RoomResolution, RoomType | None]:
+    """
+    The resolution of a query that starts with a room type word: the rest
+    of it among the rooms of that type, then among every room when the type
+    word does not fit the data. A fuzzy full-query match can ignore the type
+    word, so only an exact full-name match skips this.
+    """
+    exact_full = resolution.status == "matched" and resolution.match_type in {
+        "exact",
+        "compact",
+    }
+    prefixed = None if exact_full else _split_type_prefix(query)
+    if prefixed is None:
+        return resolution, None
+    rest, prefix_type = prefixed
+    typed_names = [
+        record_name
+        for record_name, record in zip(names, rooms, strict=True)
+        if prefix_type is None or _clean(record.get("type")) == prefix_type
+    ]
+    for candidate_names, candidate_type in ((typed_names, prefix_type), (names, None)):
+        retry = _resolve_room_name(rest, candidate_names)
+        if retry.status in {"matched", "ambiguous"}:
+            return retry, candidate_type
+    return resolution, None
+
+
+def _matched_records(
+    rooms: list[dict], match: str, room_type: RoomType | None
+) -> list[dict]:
+    return [
+        record
+        for record in rooms
+        if (_clean(record.get("name")) or "") == match
+        and (room_type is None or _clean(record.get("type")) == room_type)
+    ]
+
+
 def _lookup_room(name: str) -> _Lookup:
     query = name.strip()
     if not query:
@@ -229,32 +272,9 @@ def _lookup_room(name: str) -> _Lookup:
 
     rooms = get_rooms()
     names = [_clean(record.get("name")) or "" for record in rooms]
-    resolution = _resolve_room_name(name, names)
-    room_type: RoomType | None = None
-
-    # A fuzzy full-query match can ignore the type word, so only an exact
-    # full-name match skips the type-word lookup.
-    exact_full = resolution.status == "matched" and resolution.match_type in {
-        "exact",
-        "compact",
-    }
-    prefixed = None if exact_full else _split_type_prefix(query)
-    if prefixed is not None:
-        rest, prefix_type = prefixed
-        typed_names = [
-            record_name
-            for record_name, record in zip(names, rooms, strict=True)
-            if prefix_type is None or _clean(record.get("type")) == prefix_type
-        ]
-        # Fall back to every room when the type word doesn't fit the data.
-        for candidate_names, candidate_type in (
-            (typed_names, prefix_type),
-            (names, None),
-        ):
-            retry = _resolve_room_name(rest, candidate_names)
-            if retry.status in {"matched", "ambiguous"}:
-                resolution, room_type = retry, candidate_type
-                break
+    resolution, room_type = _typed_retry(
+        query, names, rooms, _resolve_room_name(name, names)
+    )
 
     if resolution.status == "too_short":
         return _Lookup(
@@ -265,12 +285,7 @@ def _lookup_room(name: str) -> _Lookup:
         )
 
     if resolution.status == "matched" and resolution.match is not None:
-        records = [
-            record
-            for record in rooms
-            if (_clean(record.get("name")) or "") == resolution.match
-            and (room_type is None or _clean(record.get("type")) == room_type)
-        ]
+        records = _matched_records(rooms, resolution.match, room_type)
         if records:
             match_info = {
                 "original_query": name,
@@ -323,7 +338,7 @@ def _name_contains(name: str, query_variants: set[str]) -> bool:
 
 
 def list_rooms(
-    type: RoomType | None = None,
+    room_type: RoomType | None = None,
     location: RoomLocation | None = None,
     floor: str | None = None,
     min_capacity: int | None = None,
@@ -335,13 +350,13 @@ def list_rooms(
     prefixed = _split_type_prefix(query) if query else None
     if prefixed is not None:
         query = prefixed[0]
-        type = type or prefixed[1]
+        room_type = room_type or prefixed[1]
     query_variants = _compact_variants(query) if query else set()
     matches = [
         _build_room_match(record)
         for record in get_rooms()
         if _name_contains(_clean(record.get("name")) or "", query_variants)
-        and _matches_room_filters(record, type, location, floor, min_capacity)
+        and _matches_room_filters(record, room_type, location, floor, min_capacity)
     ]
     return paginate(matches, limit=limit, offset=offset)
 

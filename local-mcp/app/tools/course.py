@@ -413,6 +413,19 @@ def _course_list(
     )
 
 
+def _accreditations_kept(
+    course: CourseData,
+    accreditation_filter: _AccreditationFilter,
+) -> tuple[bool, dict[str, AccreditationMatch] | None]:
+    """Whether a course passes the accreditation filters, and what to report."""
+    if not accreditation_filter.scopes:
+        return True, None
+    matched_entries = _matching_accreditations(course, accreditation_filter)
+    if not matched_entries:
+        return False, None
+    return True, _reported_accreditations(matched_entries, accreditation_filter.reports)
+
+
 def list_courses(
     *,
     program: StudyProgram | None = None,
@@ -437,17 +450,23 @@ def list_courses(
         participants_year or snapshot.latest_participants_year,
         min_participants,
         max_participants,
-        participants_year is not None
-        or min_participants is not None
-        or max_participants is not None
-        or sort_by_participants,
+        sort_by_participants
+        or any(
+            value is not None
+            for value in (participants_year, min_participants, max_participants)
+        ),
     )
 
     professor_filter = _staff_filter(professors, courses, "professors")
     assistant_filter = _staff_filter(assistants, courses, "assistants")
-    if (professors and professor_filter.groups is None) or (
-        assistants and assistant_filter.groups is None
-    ):
+    unknown_staff = any(
+        names and staff_filter.groups is None
+        for names, staff_filter in (
+            (professors, professor_filter),
+            (assistants, assistant_filter),
+        )
+    )
+    if unknown_staff:
         return _course_list([], participant_filter, limit, offset)
 
     query_filter = _query_filter(query, snapshot.records)
@@ -470,14 +489,9 @@ def list_courses(
         if not within:
             continue
 
-        accreditations: dict[str, AccreditationMatch] | None = None
-        if accreditation_filter.scopes:
-            matched_entries = _matching_accreditations(course, accreditation_filter)
-            if not matched_entries:
-                continue
-            accreditations = _reported_accreditations(
-                matched_entries, accreditation_filter.reports
-            )
+        kept, accreditations = _accreditations_kept(course, accreditation_filter)
+        if not kept:
+            continue
 
         matches.append(
             _course_match(

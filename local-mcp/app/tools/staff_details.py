@@ -134,6 +134,28 @@ def _programs(staff_id: int) -> list[CoordinatedProgram]:
     return [CoordinatedProgram(code=row["code"], name=row["name"]) for row in rows]
 
 
+def _add_timetable_parts(
+    details: StaffDetails, staff_id: int, wanted: set[StaffInclude]
+) -> None:
+    """The included parts read from the latest main timetable."""
+    if not wanted & {StaffInclude.TEACHING, StaffInclude.SCHEDULE}:
+        return
+    timetable = current_timetable()
+    if timetable is None:
+        return
+    details.timetable = timetable["title"]
+    if StaffInclude.TEACHING in wanted:
+        details.teaching = _teaching(staff_id, timetable["id"])
+    if StaffInclude.SCHEDULE in wanted:
+        details.schedule = sorted_entries(
+            [
+                slot
+                for slot in timetable_slots(timetable["id"])
+                if staff_id in staff_ids(slot)
+            ],
+        )
+
+
 def get_staff(
     name: str,
     include: list[StaffInclude] | None = None,
@@ -160,20 +182,7 @@ def get_staff(
         bio=(record.get("bio") or None) if StaffInclude.BIO in wanted else None,
     )
 
-    if wanted & {StaffInclude.TEACHING, StaffInclude.SCHEDULE}:
-        timetable = current_timetable()
-        if timetable is not None:
-            details.timetable = timetable["title"]
-            if StaffInclude.TEACHING in wanted:
-                details.teaching = _teaching(staff_id, timetable["id"])
-            if StaffInclude.SCHEDULE in wanted:
-                details.schedule = sorted_entries(
-                    [
-                        slot
-                        for slot in timetable_slots(timetable["id"])
-                        if staff_id in staff_ids(slot)
-                    ],
-                )
+    _add_timetable_parts(details, staff_id, wanted)
     if StaffInclude.THESES in wanted:
         details.theses = _theses(staff_id)
     if StaffInclude.PROGRAMS in wanted:

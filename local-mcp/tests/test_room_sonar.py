@@ -39,7 +39,7 @@ def test_room_filters(monkeypatch: pytest.MonkeyPatch) -> None:
     assert [
         match.name
         for match in room.list_rooms(
-            type=RoomType.HALL,
+            room_type=RoomType.HALL,
             location=RoomLocation.MF,
             floor=" 1 ",
             min_capacity=40,
@@ -54,9 +54,9 @@ def test_room_filters(monkeypatch: pytest.MonkeyPatch) -> None:
         "third",
         "empty",
     ]
-    assert [match.name for match in room.list_rooms(type=RoomType.CABINET).items] == [
-        "third"
-    ]
+    assert [
+        match.name for match in room.list_rooms(room_type=RoomType.CABINET).items
+    ] == ["third"]
     assert [
         match.name for match in room.list_rooms(location=RoomLocation.FEIT).items
     ] == ["third"]
