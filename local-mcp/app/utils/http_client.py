@@ -36,7 +36,7 @@ class _JsonCache[JsonDocument]:
     failed refresh, the stale cache is returned when available.
     """
 
-    def __init__(self, filename: str, base_url: str | None = None) -> None:
+    def __init__(self, filename: str, base_url: str) -> None:
         self._filename = filename
         self._base_url = base_url
         self._data: JsonDocument | None = None
@@ -47,8 +47,7 @@ class _JsonCache[JsonDocument]:
         if self._data is not None and (now - self._timestamp) < _CACHE_TTL:
             return self._data
 
-        base_url = self._base_url or _settings.DATA_STORAGE_URL
-        url = f"{base_url.rstrip('/')}/{self._filename}"
+        url = f"{self._base_url.rstrip('/')}/{self._filename}"
         try:
             response = httpx.get(url, timeout=30)
             response.raise_for_status()
@@ -337,7 +336,10 @@ def _validate_master(item: _JsonValue) -> MasterDefense:
     return MasterPayload.model_validate(item).to_public(_settings.MASTERS_API_URL)
 
 
-_courses_cache = _JsonCache[list[dict]]("courses.json")
+_courses_cache = _JsonCache[list[dict]](
+    "catalog/courses.json",
+    base_url=_settings.DIRECTUS_URL,
+)
 _timetables_cache = _JsonCache[list[dict]](
     "timetables",
     base_url=_settings.TIMETABLES_API_URL,
