@@ -10,5 +10,7 @@ class ExamSessionScheduleFile(BaseModel):
     download_url: str = Field(
         ...,
         description="Линк за преземање на распоредот.",
-        examples=["https://data.finki-hub.com/legacy/sessions/jun_2025_2026.xlsx"],
+        examples=[
+            "https://data.finki-hub.com/assets/e74eefcc-caca-4075-9bed-2a03f6dcfe5b/jun_2025_2026.xlsx"
+        ],
     )
