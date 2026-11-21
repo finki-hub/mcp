@@ -13,7 +13,6 @@ services:
       context: ./local-mcp
     environment:
       CHAT_BOT_API_URL: ${CHAT_BOT_API_URL:-http://api:8880}
-      DATA_STORAGE_URL: ${DATA_STORAGE_URL}
       DIRECTUS_URL: ${DIRECTUS_URL:-https://data.finki-hub.com}
       POSTHOG_KEY: ${POSTHOG_KEY:-}
       POSTHOG_HOST: ${POSTHOG_HOST:-https://eu.i.posthog.com}
