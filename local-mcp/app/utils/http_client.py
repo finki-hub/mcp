@@ -338,7 +338,6 @@ def _validate_master(item: _JsonValue) -> MasterDefense:
 
 
 _courses_cache = _JsonCache[list[dict]]("courses.json")
-_sessions_cache = _JsonCache[dict[str, str]]("sessions.json")
 _timetables_cache = _JsonCache[list[dict]](
     "timetables",
     base_url=_settings.TIMETABLES_API_URL,
@@ -386,6 +385,11 @@ _ROOM_ITEM_PARAMS: Final[dict[str, str | int]] = {
     "limit": -1,
     "sort": "id",
 }
+_SESSION_ITEM_PARAMS: Final[dict[str, str | int]] = {
+    "fields": "name,file.id,file.filename_download",
+    "limit": -1,
+    "sort": "id",
+}
 _ANTO_ITEM_PARAMS: Final[dict[str, str | int]] = {
     "fields": "quote",
     "limit": -1,
@@ -419,10 +423,16 @@ def get_rooms() -> list[dict]:
 
 def get_exam_sessions() -> dict[str, str]:
     """
-    Fetch exam session schedule filenames from Directus, returning a cached
-    copy if it is less than one hour old.
+    Fetch each exam session's schedule file path under Directus /assets,
+    returning a cached copy if it is less than one hour old.
     """
-    return _sessions_cache.get()
+    return {
+        row["name"]: (
+            f"{row['file']['id']}/"
+            f"{urllib.parse.quote(row['file']['filename_download'])}"
+        )
+        for row in get_directus_items("exam_sessions", _SESSION_ITEM_PARAMS)
+    }
 
 
 def get_anto_quotes() -> list[str]:

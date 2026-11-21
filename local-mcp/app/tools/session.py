@@ -17,11 +17,11 @@ def list_exam_session_schedules(
     limit: int = DEFAULT_SESSION_LIMIT,
     offset: int = 0,
 ) -> ListPage[ExamSessionScheduleFile]:
-    base_url = f"{_settings.DATA_STORAGE_URL.rstrip('/')}/sessions/"
+    base_url = f"{_settings.DIRECTUS_URL.rstrip('/')}/assets/"
     normalized_query = transliterate_and_normalize(query) if query else ""
     files = [
-        ExamSessionScheduleFile(session=session, download_url=f"{base_url}{filename}")
-        for session, filename in get_exam_sessions().items()
+        ExamSessionScheduleFile(session=session, download_url=f"{base_url}{file_path}")
+        for session, file_path in get_exam_sessions().items()
         if (academic_year is None or session.startswith(academic_year.strip()))
         and (
             not normalized_query
