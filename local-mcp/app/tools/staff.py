@@ -7,7 +7,7 @@ from app.utils.http_client import get_staff
 
 
 def _is_active(record: dict) -> bool:
-    return str(record.get("active", "")).strip() == "1"
+    return record.get("active") is True
 
 
 def list_staff(
