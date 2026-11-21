@@ -338,10 +338,7 @@ def _validate_master(item: _JsonValue) -> MasterDefense:
 
 
 _courses_cache = _JsonCache[list[dict]]("courses.json")
-_staff_cache = _JsonCache[list[dict]]("staff.json")
-_rooms_cache = _JsonCache[list[dict]]("rooms.json")
 _sessions_cache = _JsonCache[dict[str, str]]("sessions.json")
-_anto_quotes_cache = _JsonCache[list[str]]("anto.json")
 _timetables_cache = _JsonCache[list[dict]](
     "timetables",
     base_url=_settings.TIMETABLES_API_URL,
@@ -379,6 +376,23 @@ _masters_cache = _StreamedDefenseCache(
 )
 
 
+_STAFF_ITEM_PARAMS: Final[dict[str, str | int]] = {
+    "fields": "name,active,title,position,email,cabinet,profile,courses,consultations",
+    "limit": -1,
+    "sort": "id",
+}
+_ROOM_ITEM_PARAMS: Final[dict[str, str | int]] = {
+    "fields": "name,type,location,description,floor,capacity,mrbs",
+    "limit": -1,
+    "sort": "id",
+}
+_ANTO_ITEM_PARAMS: Final[dict[str, str | int]] = {
+    "fields": "quote",
+    "limit": -1,
+    "sort": "id",
+}
+
+
 def get_courses() -> list[dict]:
     """
     Fetch courses from Directus, returning a cached copy if it is less than
@@ -392,7 +406,7 @@ def get_staff() -> list[dict]:
     Fetch staff from Directus, returning a cached copy if it is less than
     one hour old.
     """
-    return _staff_cache.get()
+    return get_directus_items("staff", _STAFF_ITEM_PARAMS)
 
 
 def get_rooms() -> list[dict]:
@@ -400,7 +414,7 @@ def get_rooms() -> list[dict]:
     Fetch rooms from Directus, returning a cached copy if it is less than
     one hour old.
     """
-    return _rooms_cache.get()
+    return get_directus_items("rooms", _ROOM_ITEM_PARAMS)
 
 
 def get_exam_sessions() -> dict[str, str]:
@@ -416,7 +430,9 @@ def get_anto_quotes() -> list[str]:
     Fetch Anto quotes from Directus, returning a cached copy if it is less
     than one hour old.
     """
-    return _anto_quotes_cache.get()
+    return [
+        row["quote"] for row in get_directus_items("anto_quotes", _ANTO_ITEM_PARAMS)
+    ]
 
 
 _directus_item_caches: dict[str, _JsonCache[dict[str, list[dict]]]] = {}
